@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -44,7 +45,7 @@ public class SetupManager {
             }
             return;
         }
-        downloadZigCompiler(fileName, dirName);
+        checkAndDownloadZigCompiler(fileName, dirName);
     }
 
     private static String getPlatformTypeName() {
@@ -80,49 +81,52 @@ public class SetupManager {
         return OS.indexOf("windows") >= 0;
     }
 
-    public static void downloadZigCompiler(String fileName, String dirName) {
+    public static void checkAndDownloadZigCompiler(String fileName, String dirName) {
         try {
             String currentDir = System.getProperty("user.dir");
-            if (Files.exists(Paths.get(currentDir + File.separator + dirName))) {
-                String compilePath = currentDir + File.separator + dirName + File.separator + "zig" + (SetupManager.isWindows() ? ".exe" : "");
-                if (Files.exists(Paths.get(compilePath))) {
-                    ProcessHelper.ProcessResult compileRunresult = ProcessHelper.run(Paths.get(currentDir + File.separator + dirName), 160_000,
-                            Arrays.asList(compilePath, "version"));
-                    if (locale.getLanguage().contains("zh")) {
-                        System.out.println("\nzig安装版本:" + compileRunresult.stdout);
-                    } else {
-                        System.out.println("\nZig install version:" + compileRunresult.stdout);
-                    }
-                    if (compileRunresult.stdout.contains("0.14.0")) {
-                        if (locale.getLanguage().contains("zh")) {
-                            System.out.println("交叉编译工具已安装:" + currentDir + File.separator + dirName);
-                        } else {
-                            System.out.println("Cross compilation tool installed:" + currentDir + File.separator + dirName);
+            File zigDir = new File(currentDir + File.separator + "zig");
+            if (zigDir.exists() && zigDir.isDirectory()) {
+                System.out.println("Zig compiler is already installed in the 'zig' directory.");
+                return;
+            }
 
-                        }
-                        return;
-                    }
-                }
+            if (Files.exists(Paths.get(currentDir + File.separator + dirName))) {
                 FileUtils.clearDirectory(currentDir + File.separator + dirName);
             }
+
             if (locale.getLanguage().contains("zh")) {
                 System.out.println("正在下载交叉编译工具");
             } else {
                 System.out.println("Downloading cross compilation tool");
             }
             if (locale.getLanguage().contains("zh")) {
-                System.out.println("下载链接：https://ziglang.org/download/0.14.0-dev.2435+7575f2121/" + fileName);
+                System.out.println("下载链接：https://ziglang.org/builds/" + fileName);
             } else {
-                System.out.println("Download link：https://ziglang.org/download/0.14.0-dev.2435+7575f2121/" + fileName);
+                System.out.println("Download link：https://ziglang.org/builds/" + fileName);
             }
-            InputStream in = new URL("https://ziglang.org/download/0.14.0-dev.2435+7575f2121/" + fileName).openStream();
-            Files.copy(in, Paths.get(currentDir + File.separator + fileName), StandardCopyOption.REPLACE_EXISTING);
+
+            URL url = new URL("https://ziglang.org/builds/" + fileName);
+            URLConnection connection = url.openConnection();
+            long totalBytes = connection.getContentLengthLong();
+
+            try (InputStream in = new ProgressInputStream(connection.getInputStream(), totalBytes, (bytesRead, total) -> {
+                int progress = (int) ((bytesRead * 100) / total);
+                System.out.print("\rDownloading: " + progress + "%");
+            })) {
+                Files.copy(in, Paths.get(currentDir + File.separator + fileName), StandardCopyOption.REPLACE_EXISTING);
+            }
+
             if (locale.getLanguage().contains("zh")) {
-                System.out.println("下载完成,正在解压");
+                System.out.println("\n下载完成,正在解压");
             } else {
-                System.out.println("Download completed, decompressing");
+                System.out.println("\nDownload completed, decompressing");
             }
             unzipFile(currentDir, fileName, currentDir);
+
+            File downloadedDir = new File(currentDir + File.separator + dirName);
+            if (downloadedDir.exists() && downloadedDir.isDirectory()) {
+                downloadedDir.renameTo(zigDir);
+            }
 
             deleteFile(currentDir, fileName + ".temp");
             deleteFile(currentDir, fileName);
@@ -132,7 +136,7 @@ public class SetupManager {
                 System.out.println("Installation of cross compilation tool completed");
             }
             if (!SetupManager.isWindows()) {
-                String compilePath = currentDir + File.separator + dirName + File.separator + "zig";
+                String compilePath = currentDir + File.separator + "zig" + File.separator + "zig";
                 ProcessHelper.run(Paths.get(currentDir), 160_000, Arrays.asList("chmod", "777", compilePath));
                 if (locale.getLanguage().contains("zh")) {
                     System.out.println("设置运行权限成功");
@@ -193,5 +197,4 @@ public class SetupManager {
         }
         return "";
     }
-
 }

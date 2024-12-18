@@ -22,9 +22,8 @@ public class DataTool {
     private static final byte[] HEADER = {'H', '2', 'A', '1'};
 
     public static void compress(String fromDir, String toFile, int level) throws IOException {
+        System.out.println("[DataTool] Starting compression from: " + fromDir + " to: " + toFile + " with level: " + level);
         final long start = System.nanoTime();
-        //final long startMs = System.currentTimeMillis();
-        //final AtomicBoolean title = new AtomicBoolean();
         long size = getSize(new File(fromDir), new Runnable() {
             int count;
             long lastTime = start;
@@ -49,6 +48,7 @@ public class DataTool {
         sort(in, out, temp, size);
         in.close();
         out.close();
+        System.out.println("[DataTool] Compression completed. Output file: " + toFile);
     }
 
 
@@ -70,14 +70,12 @@ public class DataTool {
     }
 
     private static InputStream getDirectoryInputStream(final String dir) {
-
         File f = new File(dir);
         if (!f.isDirectory() || !f.exists()) {
             throw new IllegalArgumentException("Not an existing directory: " + dir);
         }
 
         return new InputStream() {
-
             private final String baseDir;
             private final ArrayList<String> files = new ArrayList<>();
             private String current;
@@ -108,17 +106,17 @@ public class DataTool {
                 }
             }
 
+            // Metadata format:
             // int: metadata length
             // byte: 0: directory, 1: file
-            // varLong: lastModified
             // byte: 0: read-write, 1: read-only
+            // varLong: lastModified
             // (file only) varLong: file length
             // utf-8: file name
 
             @Override
             public int read() throws IOException {
                 if (meta != null) {
-                    // read from the metadata
                     int x = meta.read();
                     if (x >= 0) {
                         return x;
@@ -127,7 +125,6 @@ public class DataTool {
                 }
                 if (fileIn != null) {
                     if (remaining > 0) {
-                        // read from the file
                         int x = fileIn.read();
                         remaining--;
                         if (x < 0) {
@@ -142,16 +139,13 @@ public class DataTool {
                     // EOF
                     return -1;
                 }
-                // breadth-first traversal
-                // first all files, then all directories
+
                 current = files.remove(files.size() - 1);
                 File f = new File(current);
-                if (f.isDirectory()) {
-                    addDirectory(f);
-                }
+                boolean isFile = f.isFile();
+
                 ByteArrayOutputStream metaOut = new ByteArrayOutputStream();
                 DataOutputStream out = new DataOutputStream(metaOut);
-                boolean isFile = f.isFile();
                 out.writeInt(0);
                 out.write(isFile ? 1 : 0);
                 out.write(!f.canWrite() ? 1 : 0);
@@ -159,8 +153,6 @@ public class DataTool {
                 if (isFile) {
                     remaining = f.length();
                     writeVarLong(out, remaining);
-                    fileIn = new DataInputStream(new BufferedInputStream(
-                            new FileInputStream(current), 1024 * 1024));
                 }
                 if (!current.startsWith(baseDir)) {
                     throw new IOException("File " + current + " does not start with " + baseDir);
@@ -172,9 +164,23 @@ public class DataTool {
                 byte[] bytes = metaOut.toByteArray();
                 // copy metadata length to beginning
                 System.arraycopy(bytes, bytes.length - 4, bytes, 0, 4);
-                // cut the length
                 bytes = Arrays.copyOf(bytes, bytes.length - 4);
+
+                System.out.println("[DataTool] Writing metadata for " + (isFile ? "file" : "directory") + ": " + n);
+                System.out.println("  isFile: " + isFile);
+                System.out.println("  readOnly: " + (!f.canWrite()));
+                System.out.println("  lastModified: " + f.lastModified());
+                if (isFile) {
+                    System.out.println("  fileLength: " + remaining);
+                }
+
                 meta = new ByteArrayInputStream(bytes);
+                if (isFile) {
+                    fileIn = new DataInputStream(new BufferedInputStream(
+                            new FileInputStream(current), 1024 * 1024));
+                } else {
+                    fileIn = null;
+                }
                 return meta.read();
             }
 
@@ -190,11 +196,11 @@ public class DataTool {
             }
 
         };
-
     }
 
     private static void sort(InputStream in, OutputStream out,
                              String tempFileName, long size) throws IOException {
+        System.out.println("[DataTool] Starting sorting and chunking...");
         int bufferSize = 32 * 1024 * 1024;
         DataOutputStream tempOut = new DataOutputStream(new BufferedOutputStream(
                 new FileOutputStream(tempFileName), 1024 * 1024));
@@ -217,7 +223,6 @@ public class DataTool {
                 Chunk c = new Chunk(null, key, buff);
                 Chunk old = map.get(c);
                 if (old == null) {
-                    // new entry
                     c.idList = new ArrayList<>();
                     c.idList.add(id);
                     map.put(c, c);
@@ -235,8 +240,9 @@ public class DataTool {
         }
         tempOut.close();
         long tempSize = new File(tempFileName).length();
+        System.out.println("[DataTool] Finished initial chunk writing. Temp size: " + tempSize);
 
-        // merge blocks if needed
+        // merging and sorting chunks if needed
         int blockSize = 64;
         boolean merge = false;
         while (segmentStart.size() > blockSize) {
@@ -251,8 +257,8 @@ public class DataTool {
                 List<Long> start = segmentStart.subList(0, s);
                 TreeSet<ChunkStream> segmentIn = new TreeSet<>();
                 long read = openSegments(start, segmentIn, tempFileName, true);
-                Chunk last = null;
                 Iterator<Chunk> it = merge(segmentIn);
+                Chunk last = null;
                 while (it.hasNext()) {
                     Chunk c = it.next();
                     if (last == null) {
@@ -285,8 +291,7 @@ public class DataTool {
         dataOut.write(HEADER);
         writeVarLong(dataOut, size);
 
-        // File: header length chunk* 0
-        // chunk: pos* 0 data
+        System.out.println("[DataTool] Writing final compressed data with header...");
         Chunk last = null;
         Iterator<Chunk> it = merge(segmentIn);
         while (it.hasNext()) {
@@ -306,6 +311,7 @@ public class DataTool {
         new File(tempFileName).delete();
         writeVarLong(dataOut, 0);
         dataOut.flush();
+        System.out.println("[DataTool] Finished writing final compressed .dat file");
     }
 
     private static long openSegments(List<Long> segmentStart, TreeSet<ChunkStream> segmentIn,
@@ -313,13 +319,7 @@ public class DataTool {
         long inPos = 0;
         int bufferTotal = 64 * 1024 * 1024;
         int bufferPerStream = bufferTotal / segmentStart.size();
-        // FileChannel fc = new RandomAccessFile(tempFileName, "r").
-        //     getChannel();
         for (int i = 0; i < segmentStart.size(); i++) {
-            // long end = i < segmentStart.size() - 1 ?
-            //     segmentStart.get(i+1) : fc.size();
-            // InputStream in =
-            //     new SharedInputStream(fc, segmentStart.get(i), end);
             InputStream in = new FileInputStream(tempFileName);
             in.skip(segmentStart.get(i));
             ChunkStream s = new ChunkStream(i);
@@ -356,15 +356,6 @@ public class DataTool {
         };
     }
 
-    /**
-     * Read a number of bytes. This method repeats reading until
-     * either the bytes have been read, or EOF.
-     *
-     * @param in     the input stream
-     * @param buffer the target buffer
-     * @param max    the number of bytes to read
-     * @return the number of bytes read (max unless EOF has been reached)
-     */
     private static int readFully(InputStream in, byte[] buffer, int max)
             throws IOException {
         int result = 0, len = Math.min(max, buffer.length);
@@ -379,9 +370,6 @@ public class DataTool {
         return result;
     }
 
-    /**
-     * Get the sort key and length of a chunk.
-     */
     private static int[] getKey(byte[] data, int start, int maxPos) {
         int minLen = 4 * 1024;
         int mask = 4 * 1024 - 1;
@@ -421,7 +409,6 @@ public class DataTool {
             }
         }
         int[] key = new int[4];
-        // TODO test if cs makes a difference
         key[0] = (int) (min >>> 32);
         key[1] = (int) min;
         key[2] = cs;
@@ -475,17 +462,42 @@ public class DataTool {
         return v0 ^ v1 ^ v2 ^ v3;
     }
 
-    private static int getHash(long key) {
-        int hash = (int) ((key >>> 32) ^ key);
-        hash = ((hash >>> 16) ^ hash) * 0x45d9f3b;
-        hash = ((hash >>> 16) ^ hash) * 0x45d9f3b;
-        hash = (hash >>> 16) ^ hash;
-        return hash;
+    private static int writeVarLong(OutputStream out, long x)
+            throws IOException {
+        int len = 0;
+        while ((x & ~0x7f) != 0) {
+            out.write((byte) (0x80 | (x & 0x7f)));
+            x >>>= 7;
+            len++;
+        }
+        out.write((byte) x);
+        return ++len;
     }
 
-    /**
-     * A stream of chunks.
-     */
+    static long readVarLong(InputStream in) throws IOException {
+        long x = in.read();
+        if (x < 0) {
+            throw new EOFException();
+        }
+        x = (byte) x;
+        if (x >= 0) {
+            return x;
+        }
+        x &= 0x7f;
+        for (int s = 7; s < 64; s += 7) {
+            long b = in.read();
+            if (b < 0) {
+                throw new EOFException();
+            }
+            b = (byte) b;
+            x |= (b & 0x7f) << s;
+            if (b >= 0) {
+                break;
+            }
+        }
+        return x;
+    }
+
     static class ChunkStream implements Comparable<ChunkStream> {
         final int id;
         Chunk current;
@@ -496,11 +508,6 @@ public class DataTool {
             this.id = id;
         }
 
-        /**
-         * Read the next chunk.
-         *
-         * @return the number of bytes read
-         */
         int readNext() {
             current = null;
             current = Chunk.read(in, readKey);
@@ -520,9 +527,6 @@ public class DataTool {
         }
     }
 
-    /**
-     * A chunk of data.
-     */
     static class Chunk implements Comparable<Chunk> {
         ArrayList<Long> idList;
         final byte[] value;
@@ -534,18 +538,11 @@ public class DataTool {
             this.value = value;
         }
 
-        /**
-         * Read a chunk.
-         *
-         * @param in      the input stream
-         * @param readKey whether to read the sort key
-         * @return the chunk, or null if 0 has been read
-         */
         public static Chunk read(DataInputStream in, boolean readKey) {
             try {
                 ArrayList<Long> idList = new ArrayList<>();
                 while (true) {
-                    long x = readVarLong(in);
+                    long x = DataTool.readVarLong(in);
                     if (x == 0) {
                         break;
                     }
@@ -563,7 +560,7 @@ public class DataTool {
                         key[i] = in.readInt();
                     }
                 }
-                int len = (int) readVarLong(in);
+                int len = (int) DataTool.readVarLong(in);
                 byte[] value = new byte[len];
                 in.readFully(value);
                 return new Chunk(idList, key, value);
@@ -572,13 +569,6 @@ public class DataTool {
             }
         }
 
-        /**
-         * Write a chunk.
-         *
-         * @param out      the output stream
-         * @param writeKey whether to write the sort key
-         * @return the number of bytes written
-         */
         int write(DataOutputStream out, boolean writeKey) throws IOException {
             int len = 0;
             for (long x : idList) {
@@ -634,54 +624,4 @@ public class DataTool {
             return 0;
         }
     }
-
-    /**
-     * Write a variable size long value.
-     *
-     * @param out the output stream
-     * @param x   the value
-     * @return the number of bytes written
-     */
-    static int writeVarLong(OutputStream out, long x)
-            throws IOException {
-        int len = 0;
-        while ((x & ~0x7f) != 0) {
-            out.write((byte) (0x80 | (x & 0x7f)));
-            x >>>= 7;
-            len++;
-        }
-        out.write((byte) x);
-        return ++len;
-    }
-
-    /**
-     * Read a variable size long value.
-     *
-     * @param in the input stream
-     * @return the value
-     */
-    static long readVarLong(InputStream in) throws IOException {
-        long x = in.read();
-        if (x < 0) {
-            throw new EOFException();
-        }
-        x = (byte) x;
-        if (x >= 0) {
-            return x;
-        }
-        x &= 0x7f;
-        for (int s = 7; s < 64; s += 7) {
-            long b = in.read();
-            if (b < 0) {
-                throw new EOFException();
-            }
-            b = (byte) b;
-            x |= (b & 0x7f) << s;
-            if (b >= 0) {
-                break;
-            }
-        }
-        return x;
-    }
-
 }

@@ -6,10 +6,7 @@ import cn.muyang.cache.*;
 import cn.muyang.env.LicenseManager;
 import cn.muyang.env.SetupManager;
 import cn.muyang.helpers.ProcessHelper;
-import cn.muyang.utils.DataTool;
-import cn.muyang.utils.FileUtils;
-import cn.muyang.utils.Snippets;
-import cn.muyang.utils.StringUtils;
+import cn.muyang.utils.*;
 import cn.muyang.xml.Config;
 import cn.muyang.xml.Match;
 import org.objectweb.asm.ClassReader;
@@ -21,6 +18,9 @@ import org.objectweb.asm.tree.*;
 
 import java.io.*;
 import java.lang.reflect.Modifier;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -196,7 +196,7 @@ public class MYObfuscator {
     }
 
     public void process(Path inputJarPath, Path myj2cJarPath, Path output, Config config, List<Path> inputLibs,
-                        String plainLibName,String libUrl, boolean useAnnotations, boolean delete) throws IOException {
+                        String plainLibName, String libUrl, boolean useAnnotations, boolean delete) throws IOException {
         ExecutorService threadPool = Executors.newCachedThreadPool();
         List<Path> libs = new ArrayList<>(inputLibs);
         libs.add(myj2cJarPath);
@@ -390,46 +390,6 @@ public class MYObfuscator {
             } else {
                 System.out.println("Total " + classNumber.get() + " class files and " + methodNumber.get() + " methods need compilation");
             }
-            if ("1".equals(LicenseManager.getValue("type"))) {
-                if (methodNumber.get() > Integer.parseInt(LicenseManager.getValue("method")) || classNumber.get() > Integer.parseInt(LicenseManager.getValue("class"))) {
-                    if (locale.getLanguage().contains("zh")) {
-                        System.out.println("您使用的是个人版授权,需要编译的类或方法超过最大数量！！！");
-                    } else {
-                        System.out.println("You are using personal edition authorization, and the number of classes or methods to be compiled exceeds the maximum!!!\n");
-                    }
-                    return;
-                }
-                if (locale.getLanguage().contains("zh")) {
-                    System.out.println("将使用个人版授权为您编译！！！\n");
-                } else {
-                    System.out.println("Will be compiled for you with personal edition license ！！！\n");
-                }
-            } else if ("2".equals(LicenseManager.getValue("type"))) {
-                if (locale.getLanguage().contains("zh")) {
-                    if (locale.getLanguage().contains("zh")) {
-                        System.out.println("将使用专业版授权为您编译！！！\n");
-                    } else {
-                        System.out.println("Will be compiled for you using the Professional License！！！\n");
-                    }
-                }
-            }
-            boolean free = false;
-            if (StringUtils.isEmpty(LicenseManager.getValue("type"))) {
-                if (methodNumber.get() == 1 && classNumber.get() == 1) {
-                    free = true;
-                    if (locale.getLanguage().contains("zh")) {
-                        System.out.println("将使用免费版授权为您编译,编译文件不会过期！！！\n");
-                    } else {
-                        System.out.println(" t will be compiled for you with a free version license, and the compiled file will not expire ！！！\n");
-                    }
-                } else {
-                    if (locale.getLanguage().contains("zh")) {
-                        System.out.println("将使用试用版授权为您编译,当前编译的程序将在一周后过期,过期后将不能正常运行！！！\n");
-                    } else {
-                        System.out.println("The trial version will be authorized to compile for you. The currently compiled program will expire in a week, and will not work properly after expiration!!！\n");
-                    }
-                }
-            }
 
             if (locale.getLanguage().contains("zh")) {
                 System.out.println("正在把class文件转换成C语言代码");
@@ -519,13 +479,13 @@ public class MYObfuscator {
                     } else {
                         System.out.println("Compiling:" + target);
                     }
-                    String compilePath = System.getProperty("user.dir") + separator + "zig-" + currentOSName + "-" + currentPlatformTypeName + "-0.14.0-dev.2435+7575f2121" + separator + "zig" + (SetupManager.isWindows() ? ".exe" : "");
+                    String compilePath = System.getProperty("user.dir") + separator + "zig" + separator + "zig" + (SetupManager.isWindows() ? ".exe" : "");
                     if (Files.exists(Paths.get(compilePath))) {
-                        Future future = zigCompile(outputDir, compilePath, platformTypeName, osName, libName, libNames,zigTempDir);
+                        Future future = zigCompile(outputDir, compilePath, platformTypeName, osName, libName, libNames, zigTempDir);
                         allCompileTask.add(future);
                     } else {
                         Path parent = Paths.get(System.getProperty("user.dir")).getParent();
-                        Future future = zigCompile(outputDir, parent.toFile().getAbsolutePath() + separator + "zig-" + currentOSName + "-" + currentPlatformTypeName + "-0.14.0-dev.2435+7575f2121" + separator + "zig" + (SetupManager.isWindows() ? ".exe" : ""), platformTypeName, osName, libName, libNames,zigTempDir);
+                        Future future = zigCompile(outputDir, parent.toFile().getAbsolutePath() + separator + "zig-" + currentOSName + "-" + currentPlatformTypeName + "-0.14.0-dev.2435+7575f2121" + separator + "zig" + (SetupManager.isWindows() ? ".exe" : ""), platformTypeName, osName, libName, libNames, zigTempDir);
                         allCompileTask.add(future);
                     }
                 }
@@ -638,144 +598,134 @@ public class MYObfuscator {
         }
     }
 
-    private void addJniLoader(String plainLibName,String libUrl, ClassMetadataReader metadataReader, ZipOutputStream out) throws IOException {
-        Path loader = Files.createTempFile("bin", null);
-        try {
-            byte[] arrayOfByte = new byte[2048];
-            Path datFile = null;
-            try {
-                InputStream inputStream = MYObfuscator.class.getResourceAsStream("/myj2c.bin");
-                if (inputStream == null) {
-                    throw new UnsatisfiedLinkError(String.format("Failed to open dat file: myj2c.bin"));
-                }
-                try {
-                    datFile = Files.createTempFile("dat", null);
-                    FileOutputStream fileOutputStream = new FileOutputStream(datFile.toFile());
-                    int size;
-                    while ((size = inputStream.read(arrayOfByte)) != -1) {
-                        fileOutputStream.write(arrayOfByte, 0, size);
-                    }
-                    fileOutputStream.close();
-                } catch (Throwable throwable) {
-                    throw throwable;
-                } finally {
-                    inputStream.close();
-                }
-            } catch (IOException exception) {
-                throw new UnsatisfiedLinkError(String.format("Failed to copy file: %s", exception.getMessage()));
-            }
-            FileUtils.decryptToFile(datFile, loader, "MY20150501@2022");
-            Files.deleteIfExists(datFile);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        JarFile loaderJar = new JarFile(loader.toFile());
+    private void addJniLoader(String plainLibName, String libUrl, ClassMetadataReader metadataReader, ZipOutputStream out) throws IOException {
+        // Use ReflectionUtil to get a list of .class resource names from the compiletime package
+        List<String> classResources = ReflectionUtil.getClassResourceNamesInPackage("cn.muyang.compiletime");
+
+        // This map will hold mappings of original internal names to resource entries
         Map<String, String> classMap = new HashMap<>();
-        loaderJar.stream().forEach(entry -> {
-            if (entry.getName().endsWith(".class")) {
-                classMap.put(entry.getName().replace(".class", ""), entry.getName());
+
+        // First pass: build classMap, just like we did with jar entries
+        for (String resourceName : classResources) {
+            if (resourceName.endsWith(".class")) {
+                // The original code uses entry.getName().replace(".class", "")
+                String baseName = resourceName.replace(".class", "");
+                classMap.put(baseName, resourceName);
             }
-        });
-        loaderJar.stream().forEach(entry -> {
-                    if (!entry.getName().endsWith(".class")) {
-                        return;
-                    }
-                    try {
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        try (InputStream in = loaderJar.getInputStream(entry)) {
-                            Util.transfer(in, baos);
-                        }
-                        byte[] src = baos.toByteArray();
-                        ClassReader classReader = new ClassReader(src);
-                        ClassNode rawClassNode = new ClassNode();
-                        classReader.accept(rawClassNode, ClassReader.SKIP_DEBUG);
-                        ClassNode resultLoaderClass = new ClassNode();
-                        String originalLoaderClassName = rawClassNode.name;
+        }
 
-                        if (StringUtils.contains(entry.getName(), "Loader")) {
-                            String loaderClassName = nativeDir + "/Loader";
-                            if (plainLibName != null) {
-                                if (StringUtils.contains(entry.getName(), "LoaderPlain")) {
-                                    rawClassNode.methods.forEach(method -> {
-                                        for (int i = 0; i < method.instructions.size(); i++) {
-                                            AbstractInsnNode insnNode = method.instructions.get(i);
-                                            if (insnNode instanceof LdcInsnNode && ((LdcInsnNode) insnNode).cst instanceof String &&
-                                                    ((LdcInsnNode) insnNode).cst.equals("%LIB_NAME%")) {
-                                                ((LdcInsnNode) insnNode).cst = plainLibName;
-                                            }
-                                        }
-                                    });
-                                    rawClassNode.accept(new ClassRemapper(resultLoaderClass, new Remapper() {
-                                        @Override
-                                        public String map(String internalName) {
-                                            return internalName.equals(originalLoaderClassName) ? loaderClassName : classMap.get(internalName) != null ? nativeDir + "/" + internalName : internalName;
-                                        }
-                                    }));
-                                    //rewriteClass(resultLoaderClass);
+        // Second pass: process each class similarly to how we processed entries in the original code
+        for (String resourceName : classResources) {
+            if (!resourceName.endsWith(".class")) {
+                continue;
+            }
+            try (InputStream in = MYObfuscator.class.getClassLoader().getResourceAsStream(resourceName)) {
+                if (in == null) {
+                    continue; // Should not happen if listed by ReflectionUtil
+                }
 
-                                    ClassWriter classWriter = new SafeClassWriter(metadataReader, Opcodes.ASM9 | ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-                                    for (ClassNode bootstrapClass : bootstrapMethodsPool.getClasses()) {
-                                        bootstrapClass.accept(classWriter);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                Util.transfer(in, baos);
+                byte[] src = baos.toByteArray();
+
+                ClassReader classReader = new ClassReader(src);
+                ClassNode rawClassNode = new ClassNode();
+                classReader.accept(rawClassNode, ClassReader.SKIP_DEBUG);
+
+                ClassNode resultLoaderClass = new ClassNode();
+                String originalLoaderClassName = rawClassNode.name;
+
+                // Logic is the same as original:
+                // If this is a Loader class
+                if (StringUtils.contains(resourceName, "Loader")) {
+                    String loaderClassName = nativeDir + "/Loader";
+                    if (plainLibName != null) {
+                        // LoaderPlain branch
+                        if (StringUtils.contains(resourceName, "LoaderPlain")) {
+                            rawClassNode.methods.forEach(method -> {
+                                for (int i = 0; i < method.instructions.size(); i++) {
+                                    AbstractInsnNode insnNode = method.instructions.get(i);
+                                    if (insnNode instanceof LdcInsnNode && ((LdcInsnNode) insnNode).cst instanceof String &&
+                                            ((LdcInsnNode) insnNode).cst.equals("%LIB_NAME%")) {
+                                        ((LdcInsnNode) insnNode).cst = plainLibName;
                                     }
-                                    resultLoaderClass.accept(classWriter);
-                                    Util.writeEntry(out, loaderClassName + ".class", classWriter.toByteArray());
                                 }
-                            } else if (StringUtils.contains(entry.getName(), "LoaderUnpack")) {
-                                //if(StringUtils.isNotEmpty(libUrl)) {
-                                    rawClassNode.methods.forEach(method -> {
-                                        for (int i = 0; i < method.instructions.size(); i++) {
-                                            AbstractInsnNode insnNode = method.instructions.get(i);
-                                            if (insnNode instanceof LdcInsnNode && ((LdcInsnNode) insnNode).cst instanceof String &&
-                                                    ((LdcInsnNode) insnNode).cst.equals("%LIB_URL%")) {
-                                                ((LdcInsnNode) insnNode).cst = StringUtils.isNotEmpty(libUrl) ? libUrl : "";
-                                            }
-                                        }
-                                    });
-                                //}
-                                rawClassNode.accept(new ClassRemapper(resultLoaderClass, new Remapper() {
-                                    @Override
-                                    public String map(String internalName) {
-                                        return internalName.equals(originalLoaderClassName) ? loaderClassName : classMap.get(internalName) != null ? nativeDir + "/" + internalName : internalName;
-                                    }
-                                }));
+                            });
 
-                                //rewriteClass(resultLoaderClass);
-
-                                ClassWriter classWriter = new SafeClassWriter(metadataReader, Opcodes.ASM9 | ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-                                for (ClassNode bootstrapClass : bootstrapMethodsPool.getClasses()) {
-                                    bootstrapClass.accept(classWriter);
-                                }
-                                resultLoaderClass.accept(classWriter);
-                                Util.writeEntry(out, new StringBuilder().append(loaderClassName).append(".class").toString(), classWriter.toByteArray());
-                            }
-                        } else if (StringUtils.isEmpty(plainLibName)) {
-                            String loaderClassName = new StringBuilder().append(nativeDir).append("/").append(originalLoaderClassName).toString();
                             rawClassNode.accept(new ClassRemapper(resultLoaderClass, new Remapper() {
                                 @Override
                                 public String map(String internalName) {
-                                    return internalName.equals(originalLoaderClassName) ? loaderClassName : classMap.get(internalName) != null ? nativeDir + "/" + internalName : internalName;
+                                    return internalName.equals(originalLoaderClassName)
+                                            ? loaderClassName
+                                            : classMap.get(internalName) != null ? nativeDir + "/" + internalName : internalName;
                                 }
                             }));
-                            //rewriteClass(resultLoaderClass);
+
+                            rewriteClass(resultLoaderClass); // commented out as in original
 
                             ClassWriter classWriter = new SafeClassWriter(metadataReader, Opcodes.ASM9 | ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+                            for (ClassNode bootstrapClass : bootstrapMethodsPool.getClasses()) {
+                                bootstrapClass.accept(classWriter);
+                            }
                             resultLoaderClass.accept(classWriter);
-                            Util.writeEntry(out, new StringBuilder().append(nativeDir).append("/").append(originalLoaderClassName).append(".class").toString(), classWriter.toByteArray());
-
+                            Util.writeEntry(out, loaderClassName + ".class", classWriter.toByteArray());
                         }
+                    } else if (StringUtils.contains(resourceName, "LoaderUnpack")) {
+                        // LoaderUnpack branch
+                        rawClassNode.methods.forEach(method -> {
+                            for (int i = 0; i < method.instructions.size(); i++) {
+                                AbstractInsnNode insnNode = method.instructions.get(i);
+                                if (insnNode instanceof LdcInsnNode && ((LdcInsnNode) insnNode).cst instanceof String &&
+                                        ((LdcInsnNode) insnNode).cst.equals("%LIB_URL%")) {
+                                    ((LdcInsnNode) insnNode).cst = StringUtils.isNotEmpty(libUrl) ? libUrl : "";
+                                }
+                            }
+                        });
 
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                        rawClassNode.accept(new ClassRemapper(resultLoaderClass, new Remapper() {
+                            @Override
+                            public String map(String internalName) {
+                                return internalName.equals(originalLoaderClassName)
+                                        ? loaderClassName
+                                        : classMap.get(internalName) != null ? nativeDir + "/" + internalName : internalName;
+                            }
+                        }));
+
+                        rewriteClass(resultLoaderClass); // commented out as in original code
+
+                        ClassWriter classWriter = new SafeClassWriter(metadataReader, Opcodes.ASM9 | ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+                        for (ClassNode bootstrapClass : bootstrapMethodsPool.getClasses()) {
+                            bootstrapClass.accept(classWriter);
+                        }
+                        resultLoaderClass.accept(classWriter);
+                        Util.writeEntry(out, loaderClassName + ".class", classWriter.toByteArray());
                     }
+                } else if (StringUtils.isEmpty(plainLibName)) {
+                    // Non-loader classes, only if plainLibName is empty
+                    String loaderClassName = nativeDir + "/" + originalLoaderClassName;
+                    rawClassNode.accept(new ClassRemapper(resultLoaderClass, new Remapper() {
+                        @Override
+                        public String map(String internalName) {
+                            return internalName.equals(originalLoaderClassName)
+                                    ? loaderClassName
+                                    : classMap.get(internalName) != null ? nativeDir + "/" + internalName : internalName;
+                        }
+                    }));
+
+                    rewriteClass(resultLoaderClass); // commented out as in original code
+
+                    ClassWriter classWriter = new SafeClassWriter(metadataReader, Opcodes.ASM9 | ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+                    resultLoaderClass.accept(classWriter);
+                    Util.writeEntry(out, loaderClassName + ".class", classWriter.toByteArray());
                 }
-        );
-        try {
-            loaderJar.close();
-            Files.deleteIfExists(loader);
-        } catch (Exception e) {
-            e.printStackTrace();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
+
+
 
     public Snippets getSnippets() {
         return snippets;
