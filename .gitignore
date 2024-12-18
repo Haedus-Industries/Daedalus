@@ -1,3 +1,7 @@
 /zig-windows-x86_64-0.14.0-dev.2435+7575f2121/
 /output/
 /.gradle/
+/myj2c/build/
+/myj2c/build
+/zig
+/myj2c/build/classes
