@@ -13,7 +13,7 @@ spotbugs {
 }
 
 if (!hasProperty('mainClass')) {
-    ext.mainClass = 'cn.muyang.Main'
+    ext.mainClass = 'org.Daedalus.Main'
 }
 
 def versionFile = file('build/version.properties')
@@ -128,7 +128,7 @@ task updateVersion {
         }
     }
     versionProps.store(versionFile.newWriter(), null)
-    def versionFileDir = projectDir.getAbsolutePath() + File.separatorChar + 'src' + File.separatorChar + 'main' + File.separatorChar + 'java' + File.separatorChar + 'cn' + File.separatorChar + 'muyang' + File.separatorChar + 'Main.java';
+    def versionFileDir = projectDir.getAbsolutePath() + File.separatorChar + 'src' + File.separatorChar + 'main' + File.separatorChar + 'java' + File.separatorChar + 'project' + File.separatorChar + 'Daedalus' + File.separatorChar + 'Main.java';
     println versionFileDir;
     def oldVersionStr = findOldVersionStr(versionFileDir);
     println oldVersionStr;
