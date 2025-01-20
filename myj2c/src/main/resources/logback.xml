@@ -16,7 +16,7 @@
     </appender>
 
     <!-- Form -->
-    <appender name="FORM" class="project.Daedalus.ui.Appender" />
+    <appender name="FORM" class="project.daedalus.ui.Appender" />
 
     <!--
     Async appenders can drastically speed up logging as well as your application's
@@ -45,7 +45,7 @@
     -->
 
     <!-- Turn on debug logging connection pool. -->
-    <logger name="project.Daedalus" level="DEBUG" />
+    <logger name="project.daedalus" level="DEBUG" />
 
     <root level="INFO">
         <appender-ref ref="ASYNC" />

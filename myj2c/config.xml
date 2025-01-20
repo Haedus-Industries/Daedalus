@@ -13,7 +13,7 @@
         <flowObf>false</flowObf>
     </options>
     <include>
-        <match className="project.Daedalus.**" />
+        <match className="project.daedalus.**" />
     </include>
     <exclude>
         <match className="cn/muyang/library/**" />

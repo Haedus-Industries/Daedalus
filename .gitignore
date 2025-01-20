@@ -2,7 +2,5 @@
 /output/
 /.gradle/
 /myj2c/build/
-/myj2c/build
+/build
 /zig
-/myj2c/build/classes
-/myj2c/build
