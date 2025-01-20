@@ -4,7 +4,6 @@ plugins {
     id 'idea'
 }
 
-sourceCompatibility = targetCompatibility = '1.8'
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
 if (!hasProperty('mainClass')) {
@@ -68,12 +67,8 @@ jar {
     manifest.attributes("Main-Class": getProperty('mainClass'))
 }
 
-tasks.register('obfusticate', Exec) {
-    commandLine 'java', '-jar', 'build/libs/myj2c.jar', 'config.xml'
-}
-
-tasks.register('obfusticateClean', Delete) {
-    delete '.\\build\\libs\\myj2c.jar'
+tasks.register('obfuscate', Exec) {
+    commandLine 'java', '-jar', 'build/libs/Daedalus.jar', 'config.xml'
 }
 
 tasks.register('complete') {
@@ -82,14 +77,11 @@ tasks.register('complete') {
     }
 }
 
-obfusticate.dependsOn shadowJar
-obfusticate.mustRunAfter shadowJar
-obfusticateClean.dependsOn obfusticate
-obfusticateClean.mustRunAfter obfusticate
-
+obfuscate.dependsOn shadowJar
+obfuscate.mustRunAfter shadowJar
 complete.dependsOn shadowJar
-complete.dependsOn obfusticate
-complete.mustRunAfter obfusticate
+complete.dependsOn obfuscate
+complete.mustRunAfter obfuscate
 
 tasks.register('updateVersion') {
     versionProps.load(new FileInputStream(versionFile))
