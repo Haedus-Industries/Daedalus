@@ -24,31 +24,7 @@ public class SetupManager {
     public static final Locale locale = Locale.getDefault();
 
     public static void init() {
-        String platformTypeName = getPlatformTypeName();
-        String fileName = null;
-        String dirName = null;
-        String version = "0.15.0-dev.822+dd75e7bcb";
-
-        if (platformTypeName != null && !platformTypeName.isEmpty()) {
-            if (isLinux()) {
-                fileName = "zig-" + platformTypeName + "-linux-" + version + ".tar.xz";
-                dirName = "zig-" + platformTypeName + "-linux-" + version;
-            } else if (isMacOS()) {
-                fileName = "zig-" + platformTypeName + "-macos-" + version + ".tar.xz";
-                dirName = "zig-" + platformTypeName + "-macos-" + version;
-            } else if (isWindows()) {
-                fileName = "zig-" + platformTypeName + "-windows-" + version + ".zip";
-                dirName = "zig-" + platformTypeName + "-windows-" + version;
-            }
-        } else {
-            if (locale.getLanguage().contains("zh")) {
-                System.out.println("暂不支持该系统类型,请联系开发者");
-            } else {
-                System.out.println("This system is not supported. Please contact the developer");
-            }
-            return;
-        }
-        checkAndDownloadZigCompiler(fileName, dirName);
+        checkAndDownloadZigCompiler();
     }
 
     private static String getPlatformTypeName() {
@@ -84,7 +60,32 @@ public class SetupManager {
         return OS.contains("windows");
     }
 
-    public static void checkAndDownloadZigCompiler(String fileName, String dirName) {
+    public static void checkAndDownloadZigCompiler() {
+        String platformTypeName = getPlatformTypeName();
+        String fileName = null;
+        String dirName = null;
+        String version = "0.14.0";
+
+        if (platformTypeName != null && !platformTypeName.isEmpty()) {
+            if (isLinux()) {
+                fileName = "zig-linux-" + platformTypeName + "-" + version + ".tar.xz";
+                dirName = "zig-linux-" + platformTypeName + "-" + version;
+            } else if (isMacOS()) {
+                fileName = "zig-macos-" + platformTypeName + "-" + version + ".tar.xz";
+                dirName = "zig-macos-" + platformTypeName + "-" + version;
+            } else if (isWindows()) {
+                fileName = "zig-windows-" + platformTypeName + "-" + version + ".zip";
+                dirName = "zig-windows-" + platformTypeName + "-" + version;
+            }
+        } else {
+            if (locale.getLanguage().contains("zh")) {
+                System.out.println("暂不支持该系统类型,请联系开发者");
+            } else {
+                System.out.println("This system is not supported. Please contact the developer");
+            }
+            return;
+        }
+
         try {
             String currentDir = System.getProperty("user.dir");
             File zigDir = new File(currentDir + File.separator + "zig");
@@ -102,13 +103,16 @@ public class SetupManager {
             } else {
                 System.out.println("Downloading cross compilation tool");
             }
+
+            String downloadUrl = "https://ziglang.org/download/" + version + "/" + fileName;
+
             if (locale.getLanguage().contains("zh")) {
-                System.out.println("下载链接：https://ziglang.org/builds/" + fileName);
+                System.out.println("下载链接：" + downloadUrl);
             } else {
-                System.out.println("Download link：https://ziglang.org/builds/" + fileName);
+                System.out.println("Download link：" + downloadUrl);
             }
 
-            URL url = URI.create("https://ziglang.org/builds/" + fileName).toURL();
+            URL url = URI.create(downloadUrl).toURL();
             URLConnection connection = url.openConnection();
             long totalBytes = connection.getContentLengthLong();
 
