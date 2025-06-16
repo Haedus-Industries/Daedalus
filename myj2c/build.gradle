@@ -2,21 +2,23 @@ plugins {
     id 'com.github.johnrengelman.shadow' version "${shadowPluginVersion}"
     id 'java'
     id 'idea'
-    id "com.github.spotbugs" version "${spotbugsPluginVersion}"
 }
 
-sourceCompatibility = targetCompatibility = '1.8'
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
-spotbugs {
-    toolVersion = "${spotbugsToolVersion}"
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8 // 设置源兼容性
+    targetCompatibility = JavaVersion.VERSION_1_8 // 设置目标兼容性
 }
 
 if (!hasProperty('mainClass')) {
-    ext.mainClass = 'org.Daedalus.Main'
+    ext.mainClass = 'dev.daedalus.Main'
 }
 
 def versionFile = file('build/version.properties')
+def buildDir = file('build')
+if (!buildDir.exists())
+    buildDir.mkdirs()
 if (!versionFile.exists()) {
     versionFile.createNewFile()
 }
@@ -48,7 +50,6 @@ dependencies {
     }
     implementation "com.google.code.gson:gson:${gsonVersion}"
     implementation "org.slf4j:slf4j-nop:${slf4jVersion}"
-    spotbugsPlugins "com.h3xstream.findsecbugs:findsecbugs-plugin:${findsecbugsPluginVersion}"
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
     testImplementation "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
 }
@@ -67,46 +68,13 @@ shadowJar {
     relocate "org.objectweb", "cn.myj2c.library"
 }
 
-spotbugsMain {
-    reports {
-        html {
-            required = true
-            outputLocation = file("$buildDir/reports/spotbugs/main/spotbugs.html")
-            stylesheet = 'fancy-hist.xsl'
-        }
-    }
-}
-
 assemble.dependsOn(shadowJar)
 
 jar {
     manifest.attributes("Main-Class": getProperty('mainClass'))
 }
 
-task obfusticate(type: Exec) {
-    commandLine 'java', '-jar', 'allatori/allatori.jar', 'allatori/config.xml'
-}
-
-task obfusticateClean(type: Delete) {
-    delete '.\\build\\libs\\myj2c.jar'
-}
-
-task complete {
-    doLast {
-        println("Launcher has been built")
-    }
-}
-
-obfusticate.dependsOn shadowJar
-obfusticate.mustRunAfter shadowJar
-obfusticateClean.dependsOn obfusticate
-obfusticateClean.mustRunAfter obfusticate
-
-complete.dependsOn shadowJar
-complete.dependsOn obfusticate
-complete.mustRunAfter obfusticate
-
-task updateVersion {
+tasks.register('updateVersion') {
     versionProps.load(new FileInputStream(versionFile))
     def date = new Date().format("yyyy.MMdd", TimeZone.getTimeZone("GMT+08:00"));
     def buildNum = 1
@@ -128,18 +96,18 @@ task updateVersion {
         }
     }
     versionProps.store(versionFile.newWriter(), null)
-    def versionFileDir = projectDir.getAbsolutePath() + File.separatorChar + 'src' + File.separatorChar + 'main' + File.separatorChar + 'java' + File.separatorChar + 'project' + File.separatorChar + 'Daedalus' + File.separatorChar + 'Main.java';
+    def versionFileDir = projectDir.getAbsolutePath() + File.separatorChar + 'src' + File.separatorChar + 'main' + File.separatorChar + 'java' + File.separatorChar + 'dev' + File.separatorChar + 'daedalus' + File.separatorChar + 'Main.java';
     println versionFileDir;
     def oldVersionStr = findOldVersionStr(versionFileDir);
     println oldVersionStr;
     def newVersionValue = getNewVersionValue();
     def newVersionStr = "    public static final String VERSION = \"" + newVersionValue + "." + (buildNum < 10 ? "0" + buildNum : buildNum) + "\";"
     println newVersionStr;
-    def updatedContent = new File(versionFileDir).getText('UTF-8').replaceAll(oldVersionStr, newVersionStr);
+    def updatedContent = new File(versionFileDir).getText('UTF-8').replaceAll(oldVersionStr as String, newVersionStr);
     new File(versionFileDir).write(updatedContent, 'UTF-8')
 }
 
-def findOldVersionStr(path) {
+static def findOldVersionStr(String path) {
     def readerString = ""
     new File(path).withReader('UTF-8') { reader ->
         reader.eachLine {
@@ -147,12 +115,13 @@ def findOldVersionStr(path) {
                 readerString <<= it
                 return readerString
             }
+            return ""
         }
         return readerString
     }
 }
 
-def getNewVersionValue() {
+static def getNewVersionValue() {
     def date = new Date().format("yyyy.MMdd", TimeZone.getTimeZone("GMT+08:00"));
     return date;
 }
