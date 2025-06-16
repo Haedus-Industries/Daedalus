@@ -15,7 +15,7 @@ import java.util.jar.JarFile;
 public class ReflectionUtil {
     /**
      * Returns a list of .class resource names from the specified package.
-     * Each returned string will be something like "cn/Daedalus/compiletime/Loader.class"
+     * Each returned string will be something like "dev/daedalus/compiletime/Loader.class"
      */
     public static List<String> getClassResourceNamesInPackage(String packageName) {
         List<String> classResources = new ArrayList<>();

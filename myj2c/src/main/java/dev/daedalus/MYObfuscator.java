@@ -590,9 +590,9 @@ public class MYObfuscator {
         }
     }
 
-    private void addJniLoader(String plainLibName, String libUrl, ClassMetadataReader metadataReader, ZipOutputStream out) throws IOException {
+    private void addJniLoader(String plainLibName, String libUrl, ClassMetadataReader metadataReader, ZipOutputStream out) {
         // Use ReflectionUtil to get a list of .class resource names from the compiletime package
-        List<String> classResources = ReflectionUtil.getClassResourceNamesInPackage("cn.muyang.compiletime");
+        List<String> classResources = ReflectionUtil.getClassResourceNamesInPackage("dev.daedalus.compiletime");
 
         // This map will hold mappings of original internal names to resource entries
         Map<String, String> classMap = new HashMap<>();

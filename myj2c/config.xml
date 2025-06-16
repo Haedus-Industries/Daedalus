@@ -13,10 +13,9 @@
         <flowObf>false</flowObf>
     </options>
     <include>
-        <match className="project.Daedalus.**" />
+        <match className="dev.daedalus.**" />
     </include>
     <exclude>
-        <match className="cn/muyang/library/**" />
         <match className="org/**" />
         <match className="com/**" />
         <match className="oshi/**" />
