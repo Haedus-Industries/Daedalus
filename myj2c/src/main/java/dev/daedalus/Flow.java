@@ -15,7 +15,6 @@ import static org.objectweb.asm.Opcodes.*;
 public class Flow {
     private static final String FLOW_FIELD_NAME = "a";
     private static long flowFieldValue = 0;
-    protected static final Random random = new Random();
     private static final int[] accessArr = new int[]{0, ACC_PUBLIC, ACC_PRIVATE, ACC_PROTECTED};
 
     public static void transformClass(ClassNode classNode) {
@@ -82,8 +81,8 @@ public class Flow {
     }
 
     protected static final class SwitchBlock {
-        private LabelNode labelNode;
-        private InsnList insnList;
+        private final LabelNode labelNode;
+        private final InsnList insnList;
 
         public SwitchBlock() {
             this.labelNode = new LabelNode();
@@ -133,7 +132,7 @@ public class Flow {
     }
 
     protected static List<Integer> getUniqueRandomIntArray(int size) {
-        List baseList = new ArrayList<Integer>();
+        List<Integer> baseList = new ArrayList<>();
         for (int i = 0; i < size; i++) {
             int j;
             do {

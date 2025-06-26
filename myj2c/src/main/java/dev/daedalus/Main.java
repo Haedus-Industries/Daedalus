@@ -35,7 +35,7 @@ import java.util.stream.Stream;
 
 public class Main {
 
-    public static final String VERSION = "2025.0616.08";
+    public static final String VERSION = "2025.0626.03";
     public static final String LOGO = "\n      ███╗   ███╗ ██╗   ██╗    ██╗ ██████╗   ██████╗\n      ████╗ ████║ ╚██╗ ██╔╝    ██║ ╚════██╗ ██╔════╝\n      ██╔████╔██║  ╚████╔╝     ██║  █████╔╝ ██║     \n      ██║╚██╔╝██║   ╚██╔╝ ██   ██║ ██╔═══╝  ██║     \n      ██║ ╚═╝ ██║    ██║  ╚█████╔╝ ███████╗ ╚██████╗\n      ╚═╝     ╚═╝    ╚═╝   ╚════╝  ╚══════╝  ╚═════╝\n\n";
 
     public static final Locale locale = Locale.getDefault();
