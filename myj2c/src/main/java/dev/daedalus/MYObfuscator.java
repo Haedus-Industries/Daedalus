@@ -3,9 +3,9 @@ package dev.daedalus;
 import dev.daedalus.asm.ClassMetadataReader;
 import dev.daedalus.asm.SafeClassWriter;
 import dev.daedalus.cache.*;
-import dev.daedalus.utils.*;
 import dev.daedalus.env.SetupManager;
 import dev.daedalus.helpers.ProcessHelper;
+import dev.daedalus.utils.*;
 import dev.daedalus.xml.Config;
 import dev.daedalus.xml.Match;
 import org.objectweb.asm.ClassReader;
@@ -25,7 +25,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.jar.*;
+import java.util.jar.Attributes;
+import java.util.jar.JarFile;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
@@ -137,7 +140,7 @@ public class MYObfuscator {
                                 ClassNode classNode = new ClassNode();
                                 classReader.accept(classNode, 0);
                                 if (classMethodFilter.shouldProcess(classNode)) {
-                                    CachedClassInfo classInfo = new CachedClassInfo(classNode.name, classNode.name, "", cache.size(), Util.getFlag(classNode.access, Opcodes.ACC_STATIC));
+                                    CachedClassInfo classInfo = new CachedClassInfo(classNode.name, classNode.name, "", Util.getFlag(classNode.access, Opcodes.ACC_STATIC));
                                     for (FieldNode field : classNode.fields) {
                                         boolean isStatic = Util.getFlag(field.access, Opcodes.ACC_STATIC);
                                         CachedFieldInfo cachedFieldInfo = new CachedFieldInfo(classNode.name, field.name, field.desc, isStatic);
@@ -999,7 +1002,7 @@ public class MYObfuscator {
                         "        sprintf(str, \"%s on %d\", error, line);\n" +
                         "        (*env)->ThrowNew(env, exception_ptr,  str);\n" +
                         "        (*env)->DeleteLocalRef(env, exception_ptr);\n" +
-                        "    }\n\n"
+                        "}\n\n"
                 );
 
         // Process cached classes without license or expiration conditions

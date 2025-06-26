@@ -3,6 +3,7 @@ package dev.daedalus.cache;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 public class CachedClassInfo {
 
@@ -16,11 +17,11 @@ public class CachedClassInfo {
 
     private final List<CachedMethodInfo> cachedMethods = new ArrayList<>();
 
-    public CachedClassInfo(String clazz, String name, String desc, int id, boolean isStatic) {
+    public CachedClassInfo(String clazz, String name, String desc, boolean isStatic) {
         this.clazz = clazz;
         this.name = name;
         this.desc = desc;
-        this.id = id;
+        this.id =  Math.abs(UUID.randomUUID().hashCode());
         this.isStatic = isStatic;
     }
 

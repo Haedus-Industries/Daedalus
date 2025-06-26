@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ClassNodeCache {
-
     private final String pointerPattern;
     private final Map<String, CachedClassInfo> cache;
 
@@ -18,21 +17,9 @@ public class ClassNodeCache {
     }
 
     public int getId(String clazz) {
-        if (clazz.endsWith(";") && !clazz.startsWith("[")) {
-            if (clazz.startsWith("L")) {
-                clazz = clazz.substring(1);
-            }
-            clazz = clazz.replace(";", "");
-        }
-        if (clazz.startsWith("native/magic/1/linkcallsite/obfuscator")) {
-            return 0;
-        }
-        if (!cache.containsKey(clazz)) {
-            CachedClassInfo classInfo = new CachedClassInfo(clazz, clazz, "", cache.size(), false);
-            //System.out.println(classInfo);
-            cache.put(clazz, classInfo);
-        }
-        return cache.get(clazz).getId();
+        CachedClassInfo aClass = getClass(clazz);
+        if (aClass == null) return 0;
+        return aClass.getId();
     }
 
     public CachedClassInfo getClass(String clazz) {
@@ -46,7 +33,7 @@ public class ClassNodeCache {
             return null;
         }
         if (!cache.containsKey(clazz)) {
-            CachedClassInfo classInfo = new CachedClassInfo(clazz, clazz, "", cache.size(), false);
+            CachedClassInfo classInfo = new CachedClassInfo(clazz, clazz, "", false);
             //System.out.println(classInfo);
             cache.put(clazz, classInfo);
         }
