@@ -152,8 +152,7 @@ public class InvokeDynamicHandler extends GenericInstructionHandler<InvokeDynami
         CachedClassInfo classInfo = context.getCachedClasses().getClass("java/lang/invoke/CallSite");
         List<CachedMethodInfo> cachedMethods = classInfo.getCachedMethods();
         boolean hasMethod = false;
-        for (
-                int i = 0; i < cachedMethods.size(); i++) {
+        for (int i = 0; i < cachedMethods.size(); i++) {
             CachedMethodInfo methodInfo = cachedMethods.get(i);
             if (methodInfo.getName().equals("getTarget")) {
                 hasMethod = true;
