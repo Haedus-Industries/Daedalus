@@ -23,7 +23,7 @@ public class MethodContext {
     public final int methodIndex;
     public final int classIndex;
 
-    public final StringBuilder output;
+    public StringBuilder output;
     public final StringBuilder nativeMethods;
 
     public Type ret;

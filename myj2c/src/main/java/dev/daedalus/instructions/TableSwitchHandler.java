@@ -14,11 +14,11 @@ public class TableSwitchHandler extends GenericInstructionHandler<TableSwitchIns
         output.append(getStart(context)).append("\n    ");
 
         for (int i = 0; i < node.labels.size(); ++i) {
-            output.append(String.format("    %s\n    ", getPart(context,
+            output.append(String.format("\t%s\n\t", getPart(context,
                     node.min + i,
                     node.labels.get(i).getLabel())));
         }
-        output.append(String.format("    %s\n    ", getDefault(context, node.dflt.getLabel())));
+        output.append(String.format("\t%s\n\t", getDefault(context, node.dflt.getLabel())));
 
         instructionName = "TABLESWITCH_END";
     }

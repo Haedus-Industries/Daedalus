@@ -1,5 +1,6 @@
 package dev.daedalus.instructions;
 
+import dev.daedalus.MYObfuscator;
 import dev.daedalus.MethodContext;
 import dev.daedalus.Util;
 import org.objectweb.asm.Type;
@@ -39,10 +40,10 @@ public class LdcHandler extends GenericInstructionHandler<LdcInsnNode> {
 
     @Override
     protected void process(MethodContext context, LdcInsnNode node) {
-        boolean stringObf = context.obfuscator.isStringObf();
+        boolean stringObf = MYObfuscator.isStringObf();
         Object cst = node.cst;
         if (cst instanceof String) {
-            if (node.cst.toString() != null && node.cst.toString().length() > 0) {
+            if (!node.cst.toString().isEmpty()) {
                 instructionName += "_STRING";
                 props.put("cst_ptr", (stringObf ? Util.getStringObf(Util.utf82ints(node.cst.toString())) : "(unsigned short[]) {" + Util.utf82unicode(node.cst.toString()) + "}"));
                 props.put("cst_length", "" + node.cst.toString().length());

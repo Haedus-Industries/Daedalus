@@ -1,5 +1,6 @@
 package dev.daedalus.instructions;
 
+import dev.daedalus.MYObfuscator;
 import dev.daedalus.MethodContext;
 import dev.daedalus.Util;
 import dev.daedalus.cache.CachedClassInfo;
@@ -34,7 +35,7 @@ public class MethodHandler extends GenericInstructionHandler<MethodInsnNode> {
 
     @Override
     protected void process(MethodContext context, MethodInsnNode node) {
-        boolean stringObf = context.obfuscator.isStringObf();
+        boolean stringObf = MYObfuscator.isStringObf();
         //System.out.println(node.owner+","+node.getType()+","+node.name+","+node.desc);
         if (node.owner.equals("java/lang/invoke/MethodHandle") &&
                 (node.name.equals("invokeExact") || node.name.equals("invoke")) &&
@@ -51,7 +52,7 @@ public class MethodHandler extends GenericInstructionHandler<MethodInsnNode> {
             methodDesc = Type.getMethodDescriptor(Type.getReturnType(methodDesc), methodArguments);
             String mhDesc = simplifyDesc(node.desc);
             //context.output.append("printf(\"main run "+System.currentTimeMillis()+"\\n\");");
-            context.output.append("temp0.l = (*env)->NewObjectArray(env, " + Type.getArgumentTypes(mhDesc).length + ", c_" + context.getCachedClasses().getClass("java/lang/Object").getId() + "_(env)->clazz, NULL);\n");
+            context.output.append("temp0.l = (*env)->NewObjectArray(env, ").append(Type.getArgumentTypes(mhDesc).length).append(", c_").append(context.getCachedClasses().getClass("java/lang/Object").getId()).append("_(env)->clazz, NULL);\n");
             //context.output.append("(*env)->SetObjectArrayElement(env, temp1.l, 0, cstack1.l);");
             for (int i = 0; i < Type.getArgumentTypes(mhDesc).length; i++) {
                 Type argumentType = Type.getArgumentTypes(mhDesc)[i];
@@ -61,77 +62,73 @@ public class MethodHandler extends GenericInstructionHandler<MethodInsnNode> {
                     case Type.BYTE:
                     case Type.INT:
                         CachedClassInfo integer = context.getCachedClasses().getClass("java/lang/Integer");
-                        context.output.append("(*env)->SetObjectArrayElement(env, temp0.l, " + i + ", (*env)->CallStaticObjectMethod(env, c_" + integer.getId() + "_(env)->clazz, c_" + integer.getId() + "_(env)->method_" + integer.getCachedMethodId(new CachedMethodInfo("java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", true)) + ", cstack" + (1 + i) + ".l));\n");
+                        context.output.append("(*env)->SetObjectArrayElement(env, temp0.l, ").append(i).append(", (*env)->CallStaticObjectMethod(env, c_").append(integer.getId()).append("_(env)->clazz, c_").append(integer.getId()).append("_(env)->method_").append(integer.getCachedMethodId(new CachedMethodInfo("java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", true))).append(", cstack").append(1 + i).append(".l));\n");
                         break;
                     case Type.FLOAT:
                         CachedClassInfo jfloat = context.getCachedClasses().getClass("java/lang/Float");
-                        context.output.append("(*env)->SetObjectArrayElement(env, temp0.l, " + i + ", (*env)->CallStaticObjectMethod(env, c_" + jfloat.getId() + "_(env)->clazz, c_" + jfloat.getId() + "_(env)->method_" + jfloat.getCachedMethodId(new CachedMethodInfo("java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", true)) + ", cstack" + (1 + i) + ".l));\n");
+                        context.output.append("(*env)->SetObjectArrayElement(env, temp0.l, ").append(i).append(", (*env)->CallStaticObjectMethod(env, c_").append(jfloat.getId()).append("_(env)->clazz, c_").append(jfloat.getId()).append("_(env)->method_").append(jfloat.getCachedMethodId(new CachedMethodInfo("java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", true))).append(", cstack").append(1 + i).append(".l));\n");
                         break;
                     case Type.LONG:
                         CachedClassInfo jlong = context.getCachedClasses().getClass("java/lang/Long");
-                        context.output.append("(*env)->SetObjectArrayElement(env, temp0.l, " + i + ", (*env)->CallStaticObjectMethod(env, c_" + jlong.getId() + "_(env)->clazz, c_" + jlong.getId() + "_(env)->method_" + jlong.getCachedMethodId(new CachedMethodInfo("java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", true)) + ", cstack" + (1 + i) + ".l));\n");
+                        context.output.append("(*env)->SetObjectArrayElement(env, temp0.l, ").append(i).append(", (*env)->CallStaticObjectMethod(env, c_").append(jlong.getId()).append("_(env)->clazz, c_").append(jlong.getId()).append("_(env)->method_").append(jlong.getCachedMethodId(new CachedMethodInfo("java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", true))).append(", cstack").append(1 + i).append(".l));\n");
                         break;
                     case Type.DOUBLE:
                         CachedClassInfo jdouble = context.getCachedClasses().getClass("java/lang/Double");
-                        context.output.append("(*env)->SetObjectArrayElement(env, temp0.l, " + i + ", (*env)->CallStaticObjectMethod(env, c_" + jdouble.getId() + "_(env)->clazz, c_" + jdouble.getId() + "_(env)->method_" + jdouble.getCachedMethodId(new CachedMethodInfo("java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", true)) + ", cstack" + (1 + i) + ".l));\n");
-                        break;
-                    case Type.ARRAY:
-                    case Type.OBJECT:
-                        context.output.append("(*env)->SetObjectArrayElement(env, temp0.l, " + i + ", cstack" + (1 + i) + ".l);\n");
+                        context.output.append("(*env)->SetObjectArrayElement(env, temp0.l, ").append(i).append(", (*env)->CallStaticObjectMethod(env, c_").append(jdouble.getId()).append("_(env)->clazz, c_").append(jdouble.getId()).append("_(env)->method_").append(jdouble.getCachedMethodId(new CachedMethodInfo("java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", true))).append(", cstack").append(1 + i).append(".l));\n");
                         break;
                     case Type.METHOD:
                         CachedClassInfo clazz = context.getCachedClasses().getClass(context.clazz.name);
                         CachedClassInfo javaClass = context.getCachedClasses().getClass("java/lang/Class");
                         CachedClassInfo methodType = context.getCachedClasses().getClass("java/lang/invoke/MethodType");
-                        context.output.append("(*env)->SetObjectArrayElement(env, temp0.l, " + i + ", (*env)->CallStaticObjectMethod(env, /*java/lang/invoke/MethodType*/c_" + methodType.getId() + "_(env)->clazz, /*fromMethodDescriptorString*/c_" + methodType.getId() + "_(env)->method_" + methodType.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodType", "fromMethodDescriptorString", "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;", true)) + ", /*" + argumentType + "*/(*env)->NewString(env, " + (stringObf?Util.getStringObf(Util.utf82ints(argumentType.toString())) :"(unsigned short[]) {"+Util.utf82unicode(argumentType.toString())+"}") + ", " + argumentType.toString().length() + "), (*env)->CallObjectMethod(env,/*" + context.clazz.name + "*/c_" + clazz.getId() + "_(env)->clazz, /*java/lang/Class.getClassLoader*/c_" + javaClass.getId() + "_(env)->method_" + javaClass.getCachedMethodId(new CachedMethodInfo("java/lang/Class", "getClassLoader", "()Ljava/lang/ClassLoader;", false)) + ")));\n");
+                        context.output.append("(*env)->SetObjectArrayElement(env, temp0.l, ").append(i).append(", (*env)->CallStaticObjectMethod(env, /*java/lang/invoke/MethodType*/c_").append(methodType.getId()).append("_(env)->clazz, /*fromMethodDescriptorString*/c_").append(methodType.getId()).append("_(env)->method_").append(methodType.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodType", "fromMethodDescriptorString", "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;", true))).append(", /*").append(argumentType).append("*/(*env)->NewString(env, ").append(stringObf ? Util.getStringObf(Util.utf82ints(argumentType.toString())) : "(unsigned short[]) {" + Util.utf82unicode(argumentType.toString()) + "}").append(", ").append(argumentType.toString().length()).append("), (*env)->CallObjectMethod(env,/*").append(context.clazz.name).append("*/c_").append(clazz.getId()).append("_(env)->clazz, /*java/lang/Class.getClassLoader*/c_").append(javaClass.getId()).append("_(env)->method_").append(javaClass.getCachedMethodId(new CachedMethodInfo("java/lang/Class", "getClassLoader", "()Ljava/lang/ClassLoader;", false))).append(")));\n");
                         break;
+                    case Type.ARRAY:
+                    case Type.OBJECT:
                     default:
-                        context.output.append("(*env)->SetObjectArrayElement(env, temp0.l, " + i + ", cstack" + (1 + i) + ".l);\n");
+                        context.output.append("(*env)->SetObjectArrayElement(env, temp0.l, ").append(i).append(", cstack").append(1 + i).append(".l);\n");
                         break;
                 }
             }
             CachedClassInfo methodHandle = context.getCachedClasses().getClass("java/lang/invoke/MethodHandle");
             if (Type.getReturnType(mhDesc).getSize() == 0) {
-                context.output.append("(*env)->CallObjectMethod(env, cstack0.l, c_" + methodHandle.getId() + "_(env)->method_" + methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false)) + ", temp0.l);\n");
+                context.output.append("(*env)->CallObjectMethod(env, cstack0.l, c_").append(methodHandle.getId()).append("_(env)->method_").append(methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false))).append(", temp0.l);\n");
             } else {
                 Type returnType = Type.getReturnType(mhDesc);
                 switch (returnType.getSort()) {
                     case Type.BOOLEAN:
                         CachedClassInfo jbool = context.getCachedClasses().getClass("java/lang/Boolean");
-                        context.output.append("cstack0.z = (*env)->CallBooleanMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_" + methodHandle.getId() + "_(env)->method_" + methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false)) + ", temp0.l),c_" + jbool.getId() + "_(env)->method_" + jbool.getCachedMethodId(new CachedMethodInfo("java/lang/Boolean", "booleanValue", "()Z", false)) + ");\n");
+                        context.output.append("cstack0.z = (*env)->CallBooleanMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_").append(methodHandle.getId()).append("_(env)->method_").append(methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false))).append(", temp0.l),c_").append(jbool.getId()).append("_(env)->method_").append(jbool.getCachedMethodId(new CachedMethodInfo("java/lang/Boolean", "booleanValue", "()Z", false))).append(");\n");
                         break;
                     case Type.CHAR:
                         CachedClassInfo jchar = context.getCachedClasses().getClass("java/lang/Character");
-                        context.output.append("cstack0.c = (*env)->CallCharMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_" + methodHandle.getId() + "_(env)->method_" + methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false)) + ", temp0.l),c_" + jchar.getId() + "_(env)->method_" + jchar.getCachedMethodId(new CachedMethodInfo("java/lang/Character", "charValue", "()C", false)) + ");\n");
+                        context.output.append("cstack0.c = (*env)->CallCharMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_").append(methodHandle.getId()).append("_(env)->method_").append(methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false))).append(", temp0.l),c_").append(jchar.getId()).append("_(env)->method_").append(jchar.getCachedMethodId(new CachedMethodInfo("java/lang/Character", "charValue", "()C", false))).append(");\n");
                         break;
                     case Type.BYTE:
                         CachedClassInfo jbyte = context.getCachedClasses().getClass("java/lang/Byte");
-                        context.output.append("cstack0.b = (*env)->CallByteMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_" + methodHandle.getId() + "_(env)->method_" + methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false)) + ", temp0.l),c_" + jbyte.getId() + "_(env)->method_" + jbyte.getCachedMethodId(new CachedMethodInfo("java/lang/Byte", "byteValue", "()B", false)) + ");\n");
+                        context.output.append("cstack0.b = (*env)->CallByteMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_").append(methodHandle.getId()).append("_(env)->method_").append(methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false))).append(", temp0.l),c_").append(jbyte.getId()).append("_(env)->method_").append(jbyte.getCachedMethodId(new CachedMethodInfo("java/lang/Byte", "byteValue", "()B", false))).append(");\n");
                         break;
                     case Type.INT:
                         CachedClassInfo jint = context.getCachedClasses().getClass("java/lang/Integer");
-                        context.output.append("cstack0.i = (*env)->CallIntMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_" + methodHandle.getId() + "_(env)->method_" + methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false)) + ", temp0.l),c_" + jint.getId() + "_(env)->method_" + jint.getCachedMethodId(new CachedMethodInfo("java/lang/Integer", "intValue", "()I", false)) + ");\n");
+                        context.output.append("cstack0.i = (*env)->CallIntMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_").append(methodHandle.getId()).append("_(env)->method_").append(methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false))).append(", temp0.l),c_").append(jint.getId()).append("_(env)->method_").append(jint.getCachedMethodId(new CachedMethodInfo("java/lang/Integer", "intValue", "()I", false))).append(");\n");
                         break;
                     case Type.FLOAT:
                         CachedClassInfo jfloat = context.getCachedClasses().getClass("java/lang/Float");
-                        context.output.append("cstack0.f = (*env)->CallFloatMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_" + methodHandle.getId() + "_(env)->method_" + methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false)) + ", temp0.l),c_" + jfloat.getId() + "_(env)->method_" + jfloat.getCachedMethodId(new CachedMethodInfo("java/lang/Float", "floatValue", "()F", false)) + ");\n");
+                        context.output.append("cstack0.f = (*env)->CallFloatMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_").append(methodHandle.getId()).append("_(env)->method_").append(methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false))).append(", temp0.l),c_").append(jfloat.getId()).append("_(env)->method_").append(jfloat.getCachedMethodId(new CachedMethodInfo("java/lang/Float", "floatValue", "()F", false))).append(");\n");
                         break;
                     case Type.LONG:
                         CachedClassInfo jlong = context.getCachedClasses().getClass("java/lang/Long");
-                        context.output.append("cstack0.j = (*env)->CallLongMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_" + methodHandle.getId() + "_(env)->method_" + methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false)) + ", temp0.l),c_" + jlong.getId() + "_(env)->method_" + jlong.getCachedMethodId(new CachedMethodInfo("java/lang/Long", "longValue", "()J", false)) + ");\n");
+                        context.output.append("cstack0.j = (*env)->CallLongMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_").append(methodHandle.getId()).append("_(env)->method_").append(methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false))).append(", temp0.l),c_").append(jlong.getId()).append("_(env)->method_").append(jlong.getCachedMethodId(new CachedMethodInfo("java/lang/Long", "longValue", "()J", false))).append(");\n");
                         break;
                     case Type.DOUBLE:
                         CachedClassInfo jdouble = context.getCachedClasses().getClass("java/lang/Double");
-                        context.output.append("cstack0.d = (*env)->CallDoubleMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_" + methodHandle.getId() + "_(env)->method_" + methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false)) + ", temp0.l),c_" + jdouble.getId() + "_(env)->method_" + jdouble.getCachedMethodId(new CachedMethodInfo("java/lang/Double", "doubleValue", "()D", false)) + ");\n");
-                        break;
-                    case Type.ARRAY:
-                    case Type.OBJECT:
-                        context.output.append("cstack0.l = (*env)->CallObjectMethod(env, cstack0.l, c_" + methodHandle.getId() + "_(env)->method_" + methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false)) + ", temp0.l);\n");
+                        context.output.append("cstack0.d = (*env)->CallDoubleMethod(env, (*env)->CallObjectMethod(env, cstack0.l, c_").append(methodHandle.getId()).append("_(env)->method_").append(methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false))).append(", temp0.l),c_").append(jdouble.getId()).append("_(env)->method_").append(jdouble.getCachedMethodId(new CachedMethodInfo("java/lang/Double", "doubleValue", "()D", false))).append(");\n");
                         break;
                     case Type.METHOD:
                         break;
+                    case Type.ARRAY:
+                    case Type.OBJECT:
                     default:
-                        context.output.append("cstack0.l = (*env)->CallObjectMethod(env, cstack0.l, c_" + methodHandle.getId() + "_(env)->method_" + methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false)) + ", temp0.l);\n");
+                        context.output.append("cstack0.l = (*env)->CallObjectMethod(env, cstack0.l, c_").append(methodHandle.getId()).append("_(env)->method_").append(methodHandle.getCachedMethodId(new CachedMethodInfo("java/lang/invoke/MethodHandle", "invokeWithArguments", "([Ljava/lang/Object;)Ljava/lang/Object;", false))).append(", temp0.l);\n");
                         break;
                 }
             }

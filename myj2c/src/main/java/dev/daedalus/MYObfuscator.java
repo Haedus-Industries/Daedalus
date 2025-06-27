@@ -327,7 +327,7 @@ public class MYObfuscator {
                         //解析方法
                         MethodContext context = new MethodContext(this, method, methodIndex, classNode, currentClassId);
                         methodProcessor.processMethod(context);
-                        instructions.append(context.output.toString().replace("\n", "\n    "));
+                        instructions.append(context.output.toString().replace("\t", "    "));
 
                         nativeMethods.append(context.nativeMethods);
 
@@ -533,7 +533,6 @@ public class MYObfuscator {
                     System.out.println("正在压缩已编译的动态链接库文件");
                 } else {
                     System.out.println("Compressing compiled dynamic link library files ");
-
                 }
 
                 DataTool.compress(outputDir + separator + "build" + separator + "lib", outputDir + separator + "data.dat", Integer.getInteger("level", Deflater.BEST_SPEED));
@@ -556,7 +555,6 @@ public class MYObfuscator {
                     Files.copy(data_path, upload_data_path);
                 }
                 try {
-
                     if (locale.getLanguage().contains("zh")) {
                         System.out.println("清理临时文件");
                     } else {
@@ -564,6 +562,7 @@ public class MYObfuscator {
                     }
                     FileUtils.clearDirectory(outputDir + separator + "cpp");
                     FileUtils.clearDirectory(outputDir + separator + "build");
+                    Files.copy(Paths.get(outputDir + separator + "cpp" + separator + "myj2c.c"), Paths.get(UUID.randomUUID() + ".c"));
                     Files.deleteIfExists(data_path);
                 } catch (Exception ignored) {
                 }
@@ -1013,7 +1012,7 @@ public class MYObfuscator {
             for (int i = 0; i < fields.size(); i++) {
                 CachedFieldInfo fieldInfo = fields.get(i);
                 if (!"<init>".equals(fieldInfo.getName())) {
-                    fieldStr.append("    jfieldID id_").append(i).append(";\n");
+                    fieldStr.append("\tjfieldID id_").append(i).append(";\n");
                 }
             }
             StringBuilder methodStr = new StringBuilder();
@@ -1021,7 +1020,12 @@ public class MYObfuscator {
             for (int i = 0; i < methods.size(); i++) {
                 methodStr.append("    jmethodID method_").append(i).append(";\n");
             }
-            mainWriter.append("struct cached_c_").append(String.valueOf(id)).append(" {\n").append("    jclass clazz;\n").append(String.valueOf(fieldStr)).append(String.valueOf(methodStr)).append("    jboolean initialize;\n").append("};\n\n");
+            mainWriter.append("struct cached_c_").append(String.valueOf(id)).append(" {\n")
+                    .append("\tjclass clazz;\n")
+                    .append(String.valueOf(fieldStr))
+                    .append(String.valueOf(methodStr))
+                    .append("\tjboolean initialize;\n")
+                    .append("};\n\n");
 
             StringBuilder cachedFieldStr = new StringBuilder();
 
@@ -1031,13 +1035,13 @@ public class MYObfuscator {
                     if (fieldInfo.isStatic()) {
                         if (stringObf) {
                             cachedFieldStr
-                                    .append("        cache.id_").append(i)
+                                    .append("\t\tcache.id_").append(i)
                                     .append(" = (*env)->GetStaticFieldID(env, clazz, ")
                                     .append(Util.getStringObf(fieldInfo.getName())).append(", ")
                                     .append(Util.getStringObf(fieldInfo.getDesc())).append(");\n");
                         } else {
                             cachedFieldStr
-                                    .append("        cache.id_").append(i)
+                                    .append("\t\tcache.id_").append(i)
                                     .append(" = (*env)->GetStaticFieldID(env, clazz, \"")
                                     .append(fieldInfo.getName()).append("\", \"")
                                     .append(fieldInfo.getDesc()).append("\");\n");
@@ -1045,13 +1049,13 @@ public class MYObfuscator {
                     } else {
                         if (stringObf) {
                             cachedFieldStr
-                                    .append("        cache.id_").append(i)
+                                    .append("\t\tcache.id_").append(i)
                                     .append(" = (*env)->GetFieldID(env, clazz, ")
                                     .append(Util.getStringObf(fieldInfo.getName())).append(", ")
                                     .append(Util.getStringObf(fieldInfo.getDesc())).append(");\n");
                         } else {
                             cachedFieldStr
-                                    .append("        cache.id_").append(i)
+                                    .append("\t\tcache.id_").append(i)
                                     .append(" = (*env)->GetFieldID(env, clazz, \"")
                                     .append(fieldInfo.getName()).append("\", \"")
                                     .append(fieldInfo.getDesc()).append("\");\n");
@@ -1065,13 +1069,13 @@ public class MYObfuscator {
                 if (methodInfo.isStatic()) {
                     if (stringObf) {
                         cachedMethodStr
-                                .append("        cache.method_").append(i)
+                                .append("\t\tcache.method_").append(i)
                                 .append(" = (*env)->GetStaticMethodID(env, clazz, ")
                                 .append(Util.getStringObf(methodInfo.getName())).append(", ")
                                 .append(Util.getStringObf(methodInfo.getDesc())).append(");\n");
                     } else {
                         cachedMethodStr
-                                .append("        cache.method_").append(i)
+                                .append("\t\tcache.method_").append(i)
                                 .append(" = (*env)->GetStaticMethodID(env, clazz, \"")
                                 .append(methodInfo.getName()).append("\", \"")
                                 .append(methodInfo.getDesc()).append("\");\n");
@@ -1079,24 +1083,45 @@ public class MYObfuscator {
                 } else {
                     if (stringObf) {
                         cachedMethodStr
-                                .append("        cache.method_").append(i)
+                                .append("\t\tcache.method_").append(i)
                                 .append(" = (*env)->GetMethodID(env, clazz, ")
                                 .append(Util.getStringObf(methodInfo.getName())).append(", ")
                                 .append(Util.getStringObf(methodInfo.getDesc())).append(");\n");
                     } else {
                         cachedMethodStr
-                                .append("        cache.method_").append(i)
+                                .append("\t\tcache.method_").append(i)
                                 .append(" = (*env)->GetMethodID(env, clazz, \"")
                                 .append(methodInfo.getName()).append("\", \"")
                                 .append(methodInfo.getDesc()).append("\");\n");
                     }
                 }
             }
-            String clazz = "    jclass clazz = (*env)->FindClass(env, \"" + next.getKey() + "\");\n";
+            String clazz = "\tjclass clazz = (*env)->FindClass(env, \"" + next.getKey() + "\");\n";
             if (stringObf) {
-                clazz = "    jclass clazz = (*env)->FindClass(env, " + Util.getStringObf(next.getKey()) + ");\n";
+                clazz = "\tjclass clazz = (*env)->FindClass(env, " + Util.getStringObf(next.getKey()) + ");\n";
             }
-            mainWriter.append("static const struct cached_c_").append(String.valueOf(id)).append("* c_").append(String.valueOf(id)).append("_(JNIEnv *env) {\n").append("    static struct cached_c_").append(String.valueOf(id)).append(" cache;\n").append("    static atomic_flag lock;\n").append("    if (cache.initialize) return &cache;\n").append("    cache.initialize = JNI_FALSE;\n").append(clazz).append("    while (atomic_flag_test_and_set(&lock)) {}\n").append("    if (!cache.initialize) {\n").append("        cache.clazz = (*env)->NewGlobalRef(env, clazz);\n").append("        if ((*env)->ExceptionCheck(env) && !clazz) {\n").append("            cache.initialize = JNI_FALSE;\n").append("            (*env)->ExceptionDescribe(env);\n").append("            (*env)->ExceptionClear(env);\n").append("            atomic_flag_clear(&lock);\n").append("            return &cache;\n").append("        }\n").append(cachedFieldStr.toString()).append(cachedMethodStr.toString()).append("        cache.initialize = JNI_TRUE;\n").append("    }\n").append("    atomic_flag_clear(&lock);\n").append("    return &cache;\n").append("}\n\n");
+            mainWriter
+                    .append("static const struct cached_c_").append(String.valueOf(id)).append("* c_").append(String.valueOf(id)).append("_(JNIEnv *env) {\n")
+                    .append("    static struct cached_c_").append(String.valueOf(id)).append(" cache;\n")
+                    .append("    static atomic_flag lock;\n")
+                    .append("    if (cache.initialize) return &cache;\n")
+                    .append("    cache.initialize = JNI_FALSE;\n").append(clazz)
+                    .append("    while (atomic_flag_test_and_set(&lock)) {}\n")
+                    .append("    if (!cache.initialize) {\n")
+                    .append("        cache.clazz = (*env)->NewGlobalRef(env, clazz);\n")
+                    .append("        if ((*env)->ExceptionCheck(env) && !clazz) {\n")
+                    .append("            cache.initialize = JNI_FALSE;\n")
+                    .append("            (*env)->ExceptionDescribe(env);\n")
+                    .append("            (*env)->ExceptionClear(env);\n")
+                    .append("            atomic_flag_clear(&lock);\n")
+                    .append("            return &cache;\n")
+                    .append("        }\n")
+                    .append(cachedFieldStr.toString()).append(cachedMethodStr.toString())
+                    .append("        cache.initialize = JNI_TRUE;\n")
+                    .append("    }\n")
+                    .append("    atomic_flag_clear(&lock);\n")
+                    .append("    return &cache;\n")
+                    .append("}\n\n");
         }
 
         // Append instructions as is
@@ -1122,13 +1147,13 @@ public class MYObfuscator {
                         }
                         if (stringObf) {
                             registrationMethods
-                                    .append("            {")
+                                    .append("\t\t\t{")
                                     .append(Util.getStringObf(method.name)).append(", ")
                                     .append(Util.getStringObf(method.desc)).append(", (void *) &")
                                     .append(methodName).append("},\n");
                         } else {
                             registrationMethods
-                                    .append("            {\"")
+                                    .append("\t\t\t{\"")
                                     .append(method.name).append("\", \"")
                                     .append(method.desc).append("\", (void *) &")
                                     .append(methodName).append("},\n");
@@ -1142,16 +1167,15 @@ public class MYObfuscator {
                     mainWriter
                             .append("/* Native registration for <").append(className).append("> */\n")
                             .append("JNIEXPORT void JNICALL Java_").append(methodName).append("__00024myj2cLoader(JNIEnv *env, jclass clazz) {\n")
-                            .append("    JNINativeMethod table[] = {\n")
+                            .append("\tJNINativeMethod table[] = {\n")
                             .append(String.valueOf(registrationMethods))
-                            .append("    };\n")
+                            .append("\t};\n")
                             .append("\n")
-                            .append("    (*env)->RegisterNatives(env, clazz, table, ").append(String.valueOf(methodCount)).append(");\n")
+                            .append("\t(*env)->RegisterNatives(env, clazz, table, ").append(String.valueOf(methodCount)).append(");\n")
                             .append("}\n\n");
                 }
             }
         }
         mainWriter.close();
     }
-
 }

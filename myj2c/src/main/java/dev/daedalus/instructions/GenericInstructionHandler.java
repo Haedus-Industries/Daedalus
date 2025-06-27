@@ -34,22 +34,22 @@ public abstract class GenericInstructionHandler<T extends AbstractInsnNode> impl
         props.put("line", String.valueOf(context.line));
         StringBuilder tryCatch = new StringBuilder("\n");
         //tryCatch.append("    ");
-        if (tryCatchBlockNodeList.size() > 0) {
+        if (!tryCatchBlockNodeList.isEmpty()) {
             String tryCatchLabelName = context.catches.computeIfAbsent(new CatchesBlock(tryCatchBlockNodeList.stream().map(item ->
                             new CatchesBlock.CatchBlock(item.type, item.handler)).collect(Collectors.toList())),
                     key -> String.format("L_CATCH_%d", context.catches.size()));
             tryCatch.append("if ((*env)->ExceptionCheck(env)) { " + "\n");
-            tryCatch.append("   cstack0.l = (*env)->ExceptionOccurred(env);\n");
+            tryCatch.append("    cstack0.l = (*env)->ExceptionOccurred(env);\n");
             for (TryCatchBlockNode tryCatchBlockNode : tryCatchBlockNodeList) {
                 if (tryCatchBlockNode.type != null) {
                     //tryCatch.append("   if ((*env)->IsInstanceOf(env, cstack0.l, /*" + tryCatchBlockNode.type + "*/c_" + context.obfuscator.getCachedClasses().getId(tryCatchBlockNode.type) + "_(env)->clazz)) {\n");
-                    tryCatch.append("   if ((*env)->IsInstanceOf(env, cstack0.l, c_" + context.obfuscator.getCachedClasses().getId(tryCatchBlockNode.type) + "_(env)->clazz)) {\n");
-                    tryCatch.append("       (*env)->ExceptionClear(env);\n");
-                    tryCatch.append("       goto ").append(tryCatchLabelName).append(";\n  }\n");
+                    tryCatch.append("    if ((*env)->IsInstanceOf(env, cstack0.l, c_" + context.obfuscator.getCachedClasses().getId(tryCatchBlockNode.type) + "_(env)->clazz)) {\n");
+                    tryCatch.append("        (*env)->ExceptionClear(env);\n");
+                    tryCatch.append("        goto ").append(tryCatchLabelName).append(";\n  }\n");
                 }
             }
-            tryCatch.append("       (*env)->ExceptionClear(env);\n");
-            tryCatch.append("       goto ").append(tryCatchLabelName).append(";\n");
+            tryCatch.append("        (*env)->ExceptionClear(env);\n");
+            tryCatch.append("        goto ").append(tryCatchLabelName).append(";\n");
             tryCatch.append("}\n");
         } else {
             if ("void".equals(MethodProcessor.CPP_TYPES[context.ret.getSort()])) {
@@ -57,10 +57,6 @@ public abstract class GenericInstructionHandler<T extends AbstractInsnNode> impl
             } else {
                 String type = "";
                 switch (context.ret.getSort()) {
-                    case Type.ARRAY:
-                    case Type.OBJECT:
-                        type = "l";
-                        break;
                     case Type.BOOLEAN:
                         type = "z";
                         break;
@@ -85,6 +81,8 @@ public abstract class GenericInstructionHandler<T extends AbstractInsnNode> impl
                     case Type.SHORT:
                         type = "s";
                         break;
+                    case Type.ARRAY:
+                    case Type.OBJECT:
                     default:
                         type = "l";
                 }
@@ -97,7 +95,7 @@ public abstract class GenericInstructionHandler<T extends AbstractInsnNode> impl
         props.put("rettype", MethodProcessor.CPP_TYPES[context.ret.getSort()]);
         switch (context.ret.getSort()) {
             case 0:
-                props.put("retvalue", " return ;");
+                props.put("retvalue", " return;");
                 break;
             case 1:
                 props.put("retvalue", " return temp0.z;");
@@ -128,8 +126,6 @@ public abstract class GenericInstructionHandler<T extends AbstractInsnNode> impl
                 break;
             case 10:
             case 11:
-                props.put("retvalue", " return temp0.l;");
-                break;
             default:
                 props.put("retvalue", " return temp0.l;");
                 break;
@@ -189,13 +185,15 @@ public abstract class GenericInstructionHandler<T extends AbstractInsnNode> impl
             if ("ATHROW".equals(instructionName)) {
                 props.put("class_ptr", "c_" + context.getCachedClasses().getId("java/lang/NullPointerException") + "_");
             }
-            if ("NEW".equals(instructionName) && tryCatchBlockNodeList.size() > 0) {
+            if ("NEW".equals(instructionName) && !tryCatchBlockNodeList.isEmpty()) {
                 instructionName = "NEW_CATCH";
             }
-/*            if ("<clinit>".equals(context.method.name) && "IDIV".equals(instructionName)) {
+            /*
+            if ("<clinit>".equals(context.method.name) && "IDIV".equals(instructionName)) {
                 instructionName = "IDIV_STATIC";
                 props.put("class_ptr","c_"+context.getCachedClasses().getId("java/lang/ExceptionInInitializerError")+"_");
-            }*/
+            }
+            */
             context.output.append(context.obfuscator.getSnippets().getSnippet(instructionName, props));
         }
         context.output.append("\n");

@@ -199,29 +199,28 @@ public class MethodProcessor {
                 context.getLabelPool().getName(tryCatch.handler.getLabel());
                 //context.output.append(String.format("//try-catch-handler label %s %s\n", tryCatch.type, tryCatch.handler.getLabel(), context.getLabelPool().getName(tryCatch.handler.getLabel())));
             }
-
         }
 
 
         if (method.maxStack > 0) {
             for (int i = 0; i < method.maxStack; i++) {
-                output.append(String.format("jvalue cstack%s; memset(&cstack%s, 0, sizeof(jvalue));\n", i, i));
+                output.append(String.format("\tjvalue cstack%s; memset(&cstack%s, 0, sizeof(jvalue));\n", i, i));
             }
             output.append("\n");
         } else {
-            output.append(String.format("jvalue cstack%s; memset(&cstack%s, 0, sizeof(jvalue));\n", 0, 0));
+            output.append(String.format("\tjvalue cstack%s; memset(&cstack%s, 0, sizeof(jvalue));\n", 0, 0));
         }
 
         if (method.maxLocals > 0) {
             for (int i = 0; i < method.maxLocals; i++) {
-                output.append(String.format("jvalue clocal%s; memset(&clocal%s, 0, sizeof(jvalue));\n", i, i));
+                output.append(String.format("\tjvalue clocal%s; memset(&clocal%s, 0, sizeof(jvalue));\n", i, i));
             }
         } else {
-            output.append(String.format("jvalue clocal%s; memset(&clocal%s, 0, sizeof(jvalue));\n", 0, 0));
+            output.append(String.format("\tjvalue clocal%s; memset(&clocal%s, 0, sizeof(jvalue));\n", 0, 0));
         }
         output.append("\n");
         //if (method.maxStack > 0 || method.maxLocals > 0) {
-        output.append("jvalue temp0; memset(&temp0, 0, sizeof(jvalue));\n");
+        output.append("\tjvalue temp0; memset(&temp0, 0, sizeof(jvalue));\n");
         output.append("\n");
         //}
         //output.append("\nprintf(\"run : " + methodName + "<" + context.clazz.name + "." + Util.escapeCommentString(method.name) + Util.escapeCommentString(method.desc) + ">\\n\");\n");
@@ -229,11 +228,10 @@ public class MethodProcessor {
         int localIndex = 0;
         for (int i = 0; i < context.argTypes.size(); ++i) {
             Type current = context.argTypes.get(i);
-            output.append(obfuscator.getSnippets().getSnippet(
+            output.append("\t").append(obfuscator.getSnippets().getSnippet(
                     "LOCAL_LOAD_ARG_" + current.getSort(), Util.createMap(
                             "index", localIndex,
-                            "arg", argNames.get(i)
-                    ))).append("\n");
+                            "arg", argNames.get(i)))).append("\n");
             localIndex += current.getSize();
         }
         if (!context.argTypes.isEmpty()) {
@@ -243,6 +241,10 @@ public class MethodProcessor {
 
         context.stackPointer = 0;
 
+        //idk
+        StringBuilder origin = context.output;
+        context.output = new StringBuilder();
+        context.output.append("\t");
         for (int instruction = 0; instruction < method.instructions.size(); ++instruction) {
             AbstractInsnNode node = method.instructions.get(instruction);
            /* context.output.append("// ").append(Util.escapeCommentString(handlers[node.getType()]
@@ -252,6 +254,8 @@ public class MethodProcessor {
             // context.output.append("// New stack: ").append(context.stackPointer).append("\n");
             //output.append("\nprintf(\"run : " + context.stackPointer + "\\n\");\n");
         }
+        origin.append(context.output.toString().replace("\n", "\n    "));
+        context.output = origin;
 
         boolean hasAddedNewBlocks = true;
 
@@ -264,7 +268,7 @@ public class MethodProcessor {
                     continue;
                 }
                 proceedBlocks.add(catchBlock);
-                output.append("    ").append(context.catches.get(catchBlock)).append(": ");
+                output.append("\t").append(context.catches.get(catchBlock)).append(": ");
                 CatchesBlock.CatchBlock currentCatchBlock = catchBlock.getCatches().get(0);
                 if (currentCatchBlock.getClazz() == null) {
                     output.append(context.getSnippets().getSnippet("TRYCATCH_ANY_L", Util.createMap(
@@ -289,12 +293,8 @@ public class MethodProcessor {
                         //tryCatch.append(context.getSnippets().getSnippet("TRYCATCH_VOID", Util.createMap()));
                         output.append(context.getSnippets().getSnippet("TRYCATCH_END_STACK_VOID", Util.createMap()));
                     } else {
-                        String type = "";
+                        String type;
                         switch (context.ret.getSort()) {
-                            case Type.ARRAY:
-                            case Type.OBJECT:
-                                type = "l";
-                                break;
                             case Type.BOOLEAN:
                                 type = "z";
                                 break;
@@ -319,6 +319,8 @@ public class MethodProcessor {
                             case Type.SHORT:
                                 type = "s";
                                 break;
+                            case Type.ARRAY:
+                            case Type.OBJECT:
                             default:
                                 type = "l";
                         }
@@ -335,7 +337,7 @@ public class MethodProcessor {
                     context.catches.put(nextCatchesBlock, String.format("L_CATCH_%d", context.catches.size()));
                     hasAddedNewBlocks = true;
                 }
-                output.append("    ");
+                output.append("\t");
                 output.append(context.getSnippets().getSnippet("TRYCATCH_ANY_L", Util.createMap(
                         "handler_block", context.catches.get(nextCatchesBlock)
                 )));
@@ -345,39 +347,39 @@ public class MethodProcessor {
 
         switch (context.ret.getSort()) {
             case 0:
-                output.append("    return ;\n");
+                output.append("return;\n");
                 break;
             case 1:
-                output.append("    return temp0.z;\n");
+                output.append("return temp0.z;\n");
                 break;
             case 2:
-                output.append("    return temp0.c;\n");
+                output.append("return temp0.c;\n");
                 break;
             case 3:
-                output.append("    return temp0.b;\n");
+                output.append("return temp0.b;\n");
                 break;
             case 4:
-                output.append("    return temp0.s;\n");
+                output.append("return temp0.s;\n");
                 break;
             case 5:
-                output.append("    return temp0.i;\n");
+                output.append("return temp0.i;\n");
                 break;
             case 6:
-                output.append("    return temp0.f;\n");
+                output.append("return temp0.f;\n");
                 break;
             case 7:
-                output.append("    return temp0.j;\n");
+                output.append("return temp0.j;\n");
                 break;
             case 8:
-                output.append("    return temp0.d;\n");
+                output.append("return temp0.d;\n");
                 break;
             case 9:
-                output.append("    return (jarray)0;\n");
+                output.append("return (jarray)0;\n");
                 break;
             case 10:
             case 11:
             default:
-                output.append("    return temp0.l;\n");
+                output.append("return temp0.l;\n");
                 break;
         }
 
