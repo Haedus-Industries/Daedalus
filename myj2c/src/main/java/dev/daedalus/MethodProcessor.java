@@ -119,7 +119,7 @@ public class MethodProcessor {
         specialMethodProcessor.preProcess(context);
 /*      String methodName = specialMethodProcessor.preProcess(context);
         methodName = "__ngen_" + methodName.replace('/', '_');*/
-        String methodName = Util.escapeCppNameString("myj2c_" + context.methodIndex);
+        String methodName = Util.escapeCppNameString("daedalus_" + context.methodIndex);
         context.obfuscator.getClassMethodNameMap().put(context.clazz.name + "." + method.name + method.desc, methodName);
         //System.out.println(context.clazz.name + "." + method.name + method.desc + "------------------" + methodName);
         boolean isStatic = Util.getFlag(method.access, Opcodes.ACC_STATIC);

@@ -11,7 +11,7 @@ public class ClInitSpecialMethodProcessor implements SpecialMethodProcessor {
     @Override
     public String preProcess(MethodContext context) {
         //String name = String.format("%s_special_clinit%d", context.obfuscator.getNativeDir(), context.methodIndex);
-        String name = "$myj2cClinit";
+        String name = "$daedalusClinit";
         if (!Util.getFlag(context.clazz.access, Opcodes.ACC_INTERFACE)) {
             context.proxyMethod = new MethodNode(
                     Opcodes.ACC_NATIVE | Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC,
@@ -31,7 +31,7 @@ public class ClInitSpecialMethodProcessor implements SpecialMethodProcessor {
                 "registerNativesForClass", "(ILjava/lang/Class;)V", false));
 
         instructions.add(new MethodInsnNode(Opcodes.INVOKESTATIC, context.clazz.name,
-                "$myj2cLoader", "()V", false));
+                "$daedalusLoader", "()V", false));
 
         if (Util.getFlag(context.clazz.access, Opcodes.ACC_INTERFACE)) {
             if (context.nativeMethod == null) {
@@ -44,7 +44,7 @@ public class ClInitSpecialMethodProcessor implements SpecialMethodProcessor {
             if (!context.obfuscator.getNoInitClassMap().containsKey(context.clazz.name)) {
                 instructions.add(new MethodInsnNode(Opcodes.INVOKESTATIC, context.clazz.name,
                         //String.format("%s_special_clinit%d", context.obfuscator.getNativeDir(), context.methodIndex), context.method.desc, false));
-                        "$myj2cClinit", context.method.desc, false));
+                        "$daedalusClinit", context.method.desc, false));
             }
         }
 

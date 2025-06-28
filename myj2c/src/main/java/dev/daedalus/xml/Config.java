@@ -52,6 +52,4 @@ public class Config {
     public void setOptions(Options options) {
         this.options = options;
     }
-
-
 }

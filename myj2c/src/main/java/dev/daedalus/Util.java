@@ -473,7 +473,7 @@ public class Util {
         for (int i = 0; i < data.length; i++) {
             result[i] = data[i] ^ seeds[i];
         }
-        return "myj2c_c_str_obf((char[]) {" + convertToString(result, ",") + "}, (char[]) {" + convertToString(seeds, ",") + "}, " + data.length + ")";
+        return "daedalus_c_str_obf((char[]) {" + convertToString(result, ",") + "}, (char[]) {" + convertToString(seeds, ",") + "}, " + data.length + ")";
     }
 
     public static String getStringObf(int[] data) {
@@ -482,7 +482,7 @@ public class Util {
         for (int i = 0; i < data.length; i++) {
             result[i] = data[i] ^ seeds[i];
         }
-        return "myj2c_j_str_obf((unsigned short[]) {" + convertToString(result, ",") + "}, (unsigned short[]) {" + convertToString(seeds, ",") + "}, " + data.length + ")";
+        return "daedalus_j_str_obf((unsigned short[]) {" + convertToString(result, ",") + "}, (unsigned short[]) {" + convertToString(seeds, ",") + "}, " + data.length + ")";
     }
 
     public static String convertToString(int[] array, final String separator) {

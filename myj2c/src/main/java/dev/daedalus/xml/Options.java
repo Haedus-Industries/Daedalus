@@ -11,6 +11,9 @@ public class Options {
     @Element(name = "flowObf", required = false)
     private String flowObf;
 
+    @Element(name = "ollvm", required = false)
+    private String ollvm;
+
     @Element(name = "expireDate", required = false)
     private String expireDate;
 
@@ -28,6 +31,14 @@ public class Options {
 
     public void setFlowObf(String flowObf) {
         this.flowObf = flowObf;
+    }
+
+    public void setOllvm(String ollvm) {
+        this.ollvm = ollvm;
+    }
+
+    public String getOllvm() {
+        return ollvm;
     }
 
     public String getExpireDate() {

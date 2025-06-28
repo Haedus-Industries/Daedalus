@@ -70,13 +70,15 @@ public class MYObfuscator {
         methodProcessor = new MethodProcessor(this);
     }
 
+    private boolean useLLVM = false;
+
     public Path preProcess(Path inputJarPath, Config config, boolean useAnnotations) {
         if (config.getOptions() != null && "true".equals(config.getOptions().getStringObf())) {
             stringObf = true;
         }
         if (temp == null) {
             try {
-                temp = Files.createTempDirectory("native-myj2c-");
+                temp = Files.createTempDirectory("native-daedalus-");
             } catch (IOException ignored) {
             }
         }
@@ -120,10 +122,13 @@ public class MYObfuscator {
                 blackList.add(stringBuilder.toString());
             }
         }
+        if (config.getOptions() != null && "true".equals(config.getOptions().getOllvm())) {
+            useLLVM = true;
+        }
 
-        Path myj2cFile = temp.resolve(UUID.randomUUID() + ".myj2c");
+        Path outputFile = temp.resolve(UUID.randomUUID() + ".daedalus");
         classMethodFilter = new ClassMethodFilter(blackList, whiteList, useAnnotations);
-        try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(myj2cFile))) {
+        try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(outputFile))) {
             File jarFile = inputJarPath.toAbsolutePath().toFile();
             JarFile jar = new JarFile(jarFile);
             //预处理，找到需要混淆的类和方法
@@ -184,18 +189,18 @@ public class MYObfuscator {
             out.closeEntry();
             out.close();
             jar.close();
-            return myj2cFile;
+            return outputFile;
         } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
     }
 
-    public void process(Path inputJarPath, Path myj2cJarPath, Path output, Config config, List<Path> inputLibs,
+    public void process(Path inputJarPath, Path outputJarPath, Path output, Config config, List<Path> inputLibs,
                         String plainLibName, String libUrl, boolean useAnnotations, boolean delete) throws IOException {
         ExecutorService threadPool = Executors.newCachedThreadPool();
         List<Path> libs = new ArrayList<>(inputLibs);
-        libs.add(myj2cJarPath);
+        libs.add(outputJarPath);
         ClassMetadataReader metadataReader = new ClassMetadataReader(libs.stream().map(x -> {
             try {
                 return new JarFile(x.toFile());
@@ -234,7 +239,7 @@ public class MYObfuscator {
         Map<String, ClassNode> map = new HashMap<>();
         Map<String, String> classNameMap = new HashMap<>();
         StringBuilder instructions = new StringBuilder();
-        File jarFile = myj2cJarPath.toAbsolutePath().toFile();
+        File jarFile = outputJarPath.toAbsolutePath().toFile();
         JarFile inputJar = new JarFile(inputJarPath.toFile());
         //Path tempFile = temp.resolve(UUID.randomUUID() + ".data");
         try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(outputDir.resolve(outputName)))) {
@@ -244,7 +249,7 @@ public class MYObfuscator {
             } else {
                 System.out.println("Parsing " + inputJarPath + "...");
             }
-            nativeDir = "myj2c/" + getRandomString(6);
+            nativeDir = "daedalus/" + getRandomString(6);
             bootstrapMethodsPool = new BootstrapMethodsPool(nativeDir);
             staticClassProvider = new InterfaceStaticClassProvider(nativeDir);
             methodIndex = 1;
@@ -311,7 +316,7 @@ public class MYObfuscator {
 
                     instructions.append("\n//").append(classNode.name).append("\n");
 
-                    classNode.visitMethod(Opcodes.ACC_NATIVE | Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, "$myj2cLoader", "()V", null, new String[0]);
+                    classNode.visitMethod(Opcodes.ACC_NATIVE | Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, "$daedalusLoader", "()V", null, new String[0]);
                     classNode.version = 52;
 
                     for (int i = 0; i < classNode.methods.size(); i++) {
@@ -381,7 +386,7 @@ public class MYObfuscator {
 
             out.flush();
             if (locale.getLanguage().contains("zh")) {
-                System.out.println("共找到 " + classNumber.get() + " 个类文件 " + methodNumber.get() + " 个方法需要myj2c编译");
+                System.out.println("共找到 " + classNumber.get() + " 个类文件 " + methodNumber.get() + " 个方法需要daedalus编译");
             } else {
                 System.out.println("Total " + classNumber.get() + " class files and " + methodNumber.get() + " methods need compilation");
             }
@@ -442,46 +447,21 @@ public class MYObfuscator {
                             libName = "";
                             break;
                     }
-
-                    String currentOSName = "";
-                    if (SetupManager.isWindows()) {
-                        currentOSName = "windows";
-                    }
-                    if (SetupManager.isLinux()) {
-                        currentOSName = "linux";
-                    }
-                    if (SetupManager.isMacOS()) {
-                        currentOSName = "macos";
-                    }
-                    String currentPlatformTypeName = "";
-                    switch (System.getProperty("os.arch").toLowerCase()) {
-                        case "x86_64":
-                        case "amd64":
-                            currentPlatformTypeName = "x86_64";
-                            break;
-                        case "aarch64":
-                            currentPlatformTypeName = "aarch64";
-                            break;
-                        case "x86":
-                            currentPlatformTypeName = "i386";
-                            break;
-                        default:
-                            currentPlatformTypeName = "";
-                            break;
-                    }
                     if (locale.getLanguage().contains("zh")) {
                         System.out.println("开始编译:" + target);
                     } else {
                         System.out.println("Compiling:" + target);
                     }
-                    String compilePath = System.getProperty("user.dir") + separator + "zig" + separator + "zig" + (SetupManager.isWindows() ? ".exe" : "");
-                    if (Files.exists(Paths.get(compilePath))) {
-                        Future<Long> future = zigCompile(outputDir, compilePath, platformTypeName, osName, libName, libNames, zigTempDir);
-                        allCompileTask.add(future);
+                    if (!useLLVM) {
+                        String compilePath = System.getProperty("user.dir") + separator + "zig" + separator + "zig" + (SetupManager.isWindows() ? ".exe" : "");
+                        if (Files.exists(Paths.get(compilePath))) {
+                            Future<Long> future = zigCompile(outputDir, compilePath, platformTypeName, osName, libName, libNames, zigTempDir);
+                            allCompileTask.add(future);
+                        } else {
+                            throw new RuntimeException("zig compiler not found");
+                        }
                     } else {
-                        Path parent = Paths.get(System.getProperty("user.dir")).getParent();
-                        Future<Long> future = zigCompile(outputDir, parent.toFile().getAbsolutePath() + separator + "zig-" + currentOSName + "-" + currentPlatformTypeName + "-0.14.0-dev.2435+7575f2121" + separator + "zig" + (SetupManager.isWindows() ? ".exe" : ""), platformTypeName, osName, libName, libNames, zigTempDir);
-                        allCompileTask.add(future);
+                        allCompileTask.add(ollvmCompile(outputDir, platformTypeName, osName, libName, libNames));
                     }
                 }
 
@@ -562,7 +542,7 @@ public class MYObfuscator {
                     }
                     FileUtils.clearDirectory(outputDir + separator + "cpp");
                     FileUtils.clearDirectory(outputDir + separator + "build");
-                    Files.copy(Paths.get(outputDir + separator + "cpp" + separator + "myj2c.c"), Paths.get(UUID.randomUUID() + ".c"));
+                    Files.copy(Paths.get(outputDir + separator + "cpp" + separator + "daedalus.c"), Paths.get(UUID.randomUUID() + ".c"));
                     Files.deleteIfExists(data_path);
                 } catch (Exception ignored) {
                 }
@@ -574,9 +554,9 @@ public class MYObfuscator {
             out.closeEntry();
             metadataReader.close();
             if (locale.getLanguage().contains("zh")) {
-                System.out.println("myj2c编译任务已成功");
+                System.out.println("daedalus编译任务已成功");
             } else {
-                System.out.println("myj2c compilation task succeeded");
+                System.out.println("daedalus compilation task succeeded");
             }
             out.close();
             if (delete) {
@@ -900,10 +880,50 @@ public class MYObfuscator {
             return threadPool.submit(() -> {
                 System.out.println("Temp Dir path: " + zigTempDir);
                 ProcessHelper.ProcessResult compileRunresult = ProcessHelper.run(outputDir.toAbsolutePath(), 3000 * 1000,
-                        Arrays.asList(compilePath, "cc", "-O2", "-fno-sanitize=all", "-fno-sanitize-trap=all", "-O2", "-fno-optimize-sibling-calls", "-target", platformTypeName + "-" + osName, "-std=c11", "-fPIC", "-shared", "-s", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-I." + separator + "cpp", "-o." + separator + "build" + separator + "lib" + separator + libName, "." + separator + "cpp" + separator + "myj2c.c"));
+                        Arrays.asList(compilePath, "cc", "-O2", "-fno-sanitize=all", "-fno-sanitize-trap=all", "-O2", "-fno-optimize-sibling-calls", "-target", platformTypeName + "-" + osName, "-std=c11", "-fPIC", "-shared", "-s", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-I." + separator + "cpp", "-o." + separator + "build" + separator + "lib" + separator + libName, "." + separator + "cpp" + separator + "daedalus.c"));
                 libNames.add(libName);
                 compileRunresult.check("zig build");
                 return compileRunresult.execTime;
+            });
+        }
+    }
+
+    private Future<Long> ollvmCompile(Path outputDir, String platformTypeName, String osName, String libName, List<String> libNames) {
+        String target = platformTypeName;
+        if (osName.equals("windows")) {
+            target += "-w64-mingw";
+        } else {
+            target += "-" + osName;
+        }
+        try (ExecutorService threadPool = Executors.newCachedThreadPool()) {
+            //获取异步Future对象
+            String finalTarget = target;
+            String output = "." + separator + "build" + separator + "lib" + separator + libName;
+            String output_static = "." + separator + "cpp" + separator + "daedalus.o";
+            String include = "-I." + separator + "cpp";
+            String source = "." + separator + "cpp" + separator + "daedalus.c";
+            return threadPool.submit(() -> {
+                ProcessHelper.ProcessResult compileObjResult = ProcessHelper.run(outputDir.toAbsolutePath(), 3000 * 1000,
+                        Arrays.asList("clang-cl", "-target", finalTarget, "-c",
+                                "-mllvm", "-bcf",
+                                "-mllvm", "-bcf_prob=80",
+                                "-mllvm", "-bcf_loop=2",
+                                "-mllvm", "-sobf",
+                                "-mllvm", "-icall",
+                                "-mllvm", "-sub",
+                                "-mllvm", "-sub_loop=3",
+                                "-mllvm", "-igv",
+                                include, source,
+                                "-o" + output_static
+                        )
+                );
+                ProcessHelper.ProcessResult compileDynamicLibResult = ProcessHelper.run(outputDir.toAbsolutePath(), 3000 * 1000,
+                        Arrays.asList("gcc", "-s", "-shared", output_static, "-o", output)
+                );
+                libNames.add(libName);
+                compileObjResult.check("clang build");
+                compileDynamicLibResult.check("gcc link");
+                return compileObjResult.execTime + compileDynamicLibResult.execTime;
             });
         }
     }
@@ -918,7 +938,7 @@ public class MYObfuscator {
         // Assume `stringObf` is defined elsewhere in the class or passed as a parameter
         // boolean stringObf = this.stringObf; // Example if it's a class member
 
-        BufferedWriter mainWriter = Files.newBufferedWriter(cppDir.resolve("myj2c.c").toAbsolutePath());
+        BufferedWriter mainWriter = Files.newBufferedWriter(cppDir.resolve("daedalus.c").toAbsolutePath());
         mainWriter
                 .append("#include <jni.h>\n" + "#include <stdatomic.h>\n" + "#include <string.h>\n" + "#include <stdbool.h>\n")
                 .append(stringObf ? "#include <stdarg.h>\n" : "")
@@ -932,12 +952,12 @@ public class MYObfuscator {
         // Retain the string obfuscation functions conditionally
         if (config.getOptions() != null && "true".equals(config.getOptions().getStringObf())) {
             mainWriter
-                    .append("\nstatic inline char* myj2c_c_str_obf(char *a, char *b, const size_t len) {\n" +
+                    .append("\nstatic inline char* daedalus_c_str_obf(char *a, char *b, const size_t len) {\n" +
                             "    volatile char c[len]; memcpy((char*) c, b, len); memcpy(b, (char*) c, len);\n" +
                             "    for(size_t i = 0; i < len; i++) a[i] ^= b[i]; return a;\n" +
                             "}\n" +
                             "\n" +
-                            "static inline unsigned short* myj2c_j_str_obf(unsigned short *a, unsigned short *b, const size_t len) {\n" +
+                            "static inline unsigned short* daedalus_j_str_obf(unsigned short *a, unsigned short *b, const size_t len) {\n" +
                             "    volatile unsigned short c[len]; memcpy((unsigned short*) c, b, len); memcpy(b, (unsigned short*) c, len);\n" +
                             "    for(size_t i = 0; i < len; i++) a[i] ^= b[i]; return a;\n" +
                             "}\n\n"
@@ -1135,9 +1155,9 @@ public class MYObfuscator {
                 StringBuilder registrationMethods = new StringBuilder();
                 int methodCount = 0;
                 for (MethodNode method : classNode.methods) {
-                    if (!"<init>".equals(method.name) && !"<clinit>".equals(method.name) && !"$myj2cLoader".equals(method.name)) {
+                    if (!"<init>".equals(method.name) && !"<clinit>".equals(method.name) && !"$daedalusLoader".equals(method.name)) {
                         String methodName = null;
-                        if ("$myj2cClinit".equals(method.name)) {
+                        if ("$daedalusClinit".equals(method.name)) {
                             methodName = getClassMethodNameMap().get(classNode.name + ".<clinit>()V");
                         } else {
                             methodName = getClassMethodNameMap().get(classNode.name + "." + method.name + method.desc);
@@ -1166,7 +1186,7 @@ public class MYObfuscator {
                     String methodName = NativeSignature.getJNICompatibleName(className);
                     mainWriter
                             .append("/* Native registration for <").append(className).append("> */\n")
-                            .append("JNIEXPORT void JNICALL Java_").append(methodName).append("__00024myj2cLoader(JNIEnv *env, jclass clazz) {\n")
+                            .append("JNIEXPORT void JNICALL Java_").append(methodName).append("__00024daedalusLoader(JNIEnv *env, jclass clazz) {\n")
                             .append("\tJNINativeMethod table[] = {\n")
                             .append(String.valueOf(registrationMethods))
                             .append("\t};\n")

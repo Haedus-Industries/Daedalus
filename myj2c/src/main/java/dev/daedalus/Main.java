@@ -35,7 +35,7 @@ import java.util.stream.Stream;
 
 public class Main {
 
-    public static final String VERSION = "2025.0627.16";
+    public static final String VERSION = "2025.0628.09";
     public static final String LOGO = "\n      ███╗   ███╗ ██╗   ██╗    ██╗ ██████╗   ██████╗\n      ████╗ ████║ ╚██╗ ██╔╝    ██║ ╚════██╗ ██╔════╝\n      ██╔████╔██║  ╚████╔╝     ██║  █████╔╝ ██║     \n      ██║╚██╔╝██║   ╚██╔╝ ██   ██║ ██╔═══╝  ██║     \n      ██║ ╚═╝ ██║    ██║  ╚█████╔╝ ███████╗ ╚██████╗\n      ╚═╝     ╚═╝    ╚═╝   ╚════╝  ╚══════╝  ╚═════╝\n\n";
 
     public static final Locale locale = Locale.getDefault();
@@ -44,7 +44,7 @@ public class Main {
             '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
     };
 
-    @CommandLine.Command(name = "myj2c-Bytecode-Translator", mixinStandardHelpOptions = true, version = "MYJ2C Bytecode Translator " + VERSION,
+    @CommandLine.Command(name = "daedalus-Bytecode-Translator", mixinStandardHelpOptions = true, version = "MYJ2C Bytecode Translator " + VERSION,
             description = "Translator .jar file into .c files and generates output .jar file")
     private static class NativeObfuscatorRunner implements Callable<Integer> {
 

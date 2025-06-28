@@ -34,7 +34,7 @@ public class ProcessHelper {
             if (timeout) {
                 System.err.println(processName + " 编译超时,可能是您编译的类和方法太多或者机器性能较低导致编译超时");
             } else {
-                if (commandLine.contains("zig") && commandLine.contains("myj2c")) {
+                if (commandLine.contains("zig") && commandLine.contains("daedalus")) {
 
                     if (locale.getLanguage().contains("zh")) {
                         System.err.println(processName + " 编译错误:" + stderr);
@@ -74,6 +74,13 @@ public class ProcessHelper {
     }
 
     public static ProcessResult run(Path directory, long timeLimit, List<String> command) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        for (String s : command) {
+            sb.append(s);
+            if (command.indexOf(s) != command.size() - 1)
+                sb.append(' ');
+        }
+        System.out.println(sb);
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         Map<String, String> environment = processBuilder.environment();
         environment.put("ZIG_GLOBAL_CACHE_DIR", directory + File.separator + "cpp" + File.separator + ".cache");
