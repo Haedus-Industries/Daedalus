@@ -909,10 +909,6 @@ public class MYObfuscator {
                                 "-mllvm", "-bcf_prob=80",
                                 "-mllvm", "-bcf_loop=2",
                                 "-mllvm", "-sobf",
-                                "-mllvm", "-icall",
-                                "-mllvm", "-sub",
-                                "-mllvm", "-sub_loop=3",
-                                "-mllvm", "-igv",
                                 include, source,
                                 "-o" + output_static
                         )
