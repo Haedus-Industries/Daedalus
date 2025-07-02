@@ -824,6 +824,10 @@ public class MYObfuscator {
     }
 
     private void rewriteClass(ClassNode classNode) {
+        Flow.transformClass(classNode);
+        for (MethodNode method : classNode.methods) {
+            Flow.transformMethod(classNode, method);
+        }
         // remove unnecessary insn
         this.removeNop(classNode);
         if (!Modifier.isInterface(classNode.access)) {
@@ -881,8 +885,8 @@ public class MYObfuscator {
                 System.out.println("Temp Dir path: " + zigTempDir);
                 ProcessHelper.ProcessResult compileRunresult = ProcessHelper.run(outputDir.toAbsolutePath(), 3000 * 1000,
                         Arrays.asList(compilePath, "cc", "-O2", "-fno-sanitize=all", "-fno-sanitize-trap=all", "-O2", "-fno-optimize-sibling-calls", "-target", platformTypeName + "-" + osName, "-std=c11", "-fPIC", "-shared", "-s", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-I." + separator + "cpp", "-o." + separator + "build" + separator + "lib" + separator + libName, "." + separator + "cpp" + separator + "daedalus.c"));
-                libNames.add(libName);
                 compileRunresult.check("zig build");
+                libNames.add(libName);
                 return compileRunresult.execTime;
             });
         }
@@ -913,17 +917,16 @@ public class MYObfuscator {
                                 "-o" + output_static
                         )
                 );
+                compileObjResult.check("clang build");
                 ProcessHelper.ProcessResult compileDynamicLibResult = ProcessHelper.run(outputDir.toAbsolutePath(), 3000 * 1000,
                         Arrays.asList("gcc", "-s", "-shared", output_static, "-o", output)
                 );
-                libNames.add(libName);
-                compileObjResult.check("clang build");
                 compileDynamicLibResult.check("gcc link");
+                libNames.add(libName);
                 return compileObjResult.execTime + compileDynamicLibResult.execTime;
             });
         }
     }
-
 
     public static boolean isStringObf() {
         return stringObf;

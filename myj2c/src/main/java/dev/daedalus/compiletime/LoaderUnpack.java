@@ -41,7 +41,9 @@ public final class LoaderUnpack {
 
         System.out.println("[LoaderUnpack] Using arch: " + arch + ", suffix: " + suffix);
 
-        String resourcePath = "/" + LoaderUnpack.class.getPackage().getName().replace(".", "/") + "/data.dat";
+        String name = LoaderUnpack.class.getName();
+        name = name.substring(0, name.lastIndexOf('.'));
+        String resourcePath = "/" + name.replace(".", "/") + "/data.dat";
         System.out.println("[LoaderUnpack] Resource path: " + resourcePath);
 
         File tempDir = new File(System.getProperty("java.io.tmpdir"));
