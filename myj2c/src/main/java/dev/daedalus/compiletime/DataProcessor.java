@@ -1,6 +1,7 @@
 package dev.daedalus.compiletime;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
@@ -33,7 +34,7 @@ public final class DataProcessor {
         while (shift < 64) {
             int b = in.read();
             if (b == -1) throw new EOFException();
-            value |= ((long)(b & 0x7F)) << shift;
+            value |= ((long) (b & 0x7F)) << shift;
             if ((b & 0x80) == 0) return value;
             shift += 7;
         }
@@ -44,11 +45,11 @@ public final class DataProcessor {
         int count = 0;
         long value = val;
         while ((value & ~0x7FL) != 0) {
-            out.write((int)((value & 0x7F) | 0x80));
+            out.write((int) ((value & 0x7F) | 0x80));
             value >>>= 7;
             count++;
         }
-        out.write((int)value);
+        out.write((int) value);
         return count + 1;
     }
 
@@ -84,10 +85,13 @@ public final class DataProcessor {
     }
 
     private static void copyAndProcess(InputStream in, OutputStream out, String tempPath) throws IOException {
-        DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(tempPath + ".temp"), 0x100000));
+        File dir = new File(tempPath + "/daedalus-" + UUID.randomUUID().hashCode());
+        dir.mkdirs();
+        File tmpFile = new File(dir, "temp.tmp");
+        DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(tmpFile.toPath()), 0x100000));
         DataInputStream dis = new DataInputStream(in);
 
-        byte[] magic = {72,50,65,49}; // "H2A1"
+        byte[] magic = {72, 50, 65, 49}; // "H2A1"
         byte[] readMagic = new byte[4];
         dis.readFully(readMagic);
         if (!Arrays.equals(readMagic, magic)) {
@@ -106,7 +110,7 @@ public final class DataProcessor {
 
         System.out.println("[DataProcessor] Starting first pass with hasMeta=false");
         while (!done) {
-            TreeMap<Long,byte[]> dataMap = new TreeMap<>();
+            TreeMap<Long, byte[]> dataMap = new TreeMap<>();
             int limit = 16777216;
             int sumBytes = 0;
             boolean reachedEnd = false;
@@ -128,7 +132,7 @@ public final class DataProcessor {
                 done = true;
             } else {
                 offsetsList.add(cumulativeBytes);
-                for (Map.Entry<Long,byte[]> e : dataMap.entrySet()) {
+                for (Map.Entry<Long, byte[]> e : dataMap.entrySet()) {
                     cumulativeBytes += writeVarLong(dos, e.getKey()) + writeVarLong(dos, 0L);
                     cumulativeBytes += writeVarLong(dos, e.getValue().length);
                     dos.write(e.getValue());
@@ -142,7 +146,7 @@ public final class DataProcessor {
         }
 
         dos.close();
-        long fileLen = new File(tempPath + ".temp").length();
+        long fileLen = tmpFile.length();
         System.out.println("[DataProcessor] After first pass temp file size: " + fileLen);
 
         // Merge if needed
@@ -151,9 +155,8 @@ public final class DataProcessor {
             List<Long> newOffsets = new ArrayList<>();
             long written = 0L;
 
-            DataOutputStream dos2 = new DataOutputStream(
-                    new BufferedOutputStream(
-                            new FileOutputStream(tempPath + ".b"), 0x100000));
+            File bFile = new File(dir, "temp.b");
+            DataOutputStream dos2 = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(bFile.toPath()), 0x100000));
             List<Long> currentOffsets = offsetsList;
 
             while (!currentOffsets.isEmpty()) {
@@ -163,7 +166,7 @@ public final class DataProcessor {
 
                 TreeSet<IndexEntry> entrySet = new TreeSet<>();
                 System.out.println("[DataProcessor] buildIndex during merge, hasMeta=false");
-                buildIndex(tempPath + ".temp", sub, entrySet, false);
+                buildIndex(tmpFile.getAbsolutePath(), sub, entrySet, false);
 
                 Iterator<DataBlock> it = createDataBlockIterator(entrySet);
                 while (it.hasNext()) {
@@ -181,17 +184,17 @@ public final class DataProcessor {
             }
 
             dos2.close();
-            new File(tempPath + ".temp").delete();
-            new File(tempPath + ".b").renameTo(new File(tempPath + ".temp"));
+            tmpFile.delete();
+            bFile.renameTo(tmpFile);
 
             offsetsList = newOffsets;
-            fileLen = new File(tempPath + ".temp").length();
+            fileLen = tmpFile.length();
             System.out.println("[DataProcessor] After merge temp file size: " + fileLen);
         }
 
         System.out.println("[DataProcessor] Final pass reading data blocks with NO metadata...");
         TreeSet<IndexEntry> finalSet = new TreeSet<>();
-        buildIndex(tempPath + ".temp", offsetsList, finalSet, false); // use false here
+        buildIndex(tmpFile.getAbsolutePath(), offsetsList, finalSet, false); // use false here
 
         Iterator<DataBlock> finalIt = createDataBlockIterator(finalSet);
         while (finalIt.hasNext()) {
@@ -201,7 +204,7 @@ public final class DataProcessor {
             out.write(block.payload);
         }
 
-        new File(tempPath + ".temp").delete();
+        tmpFile.delete();
         out.flush();
     }
 
