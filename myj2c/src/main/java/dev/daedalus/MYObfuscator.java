@@ -897,7 +897,9 @@ public class MYObfuscator {
         if (osName.equals("windows")) {
             target += "-w64-mingw";
         } else {
-            target += "-" + osName;
+            if (osName.contains("linux"))
+                target += "-pc-linux-gnu";
+            else target += "-apple-darwin";
         }
         try (ExecutorService threadPool = Executors.newCachedThreadPool()) {
             //获取异步Future对象
@@ -906,24 +908,40 @@ public class MYObfuscator {
             String output_static = "." + separator + "cpp" + separator + "daedalus.o";
             String include = "-I." + separator + "cpp";
             String source = "." + separator + "cpp" + separator + "daedalus.c";
+
             return threadPool.submit(() -> {
-                ProcessHelper.ProcessResult compileObjResult = ProcessHelper.run(outputDir.toAbsolutePath(), 3000 * 1000,
-                        Arrays.asList("clang-cl", "-target", finalTarget, "-c",
-                                "-mllvm", "-bcf",
-                                "-mllvm", "-bcf_prob=80",
-                                "-mllvm", "-bcf_loop=2",
-                                "-mllvm", "-sobf",
-                                include, source,
-                                "-o" + output_static
-                        )
-                );
-                compileObjResult.check("clang build");
-                ProcessHelper.ProcessResult compileDynamicLibResult = ProcessHelper.run(outputDir.toAbsolutePath(), 3000 * 1000,
-                        Arrays.asList("gcc", "-s", "-shared", output_static, "-o", output)
-                );
-                compileDynamicLibResult.check("gcc link");
-                libNames.add(libName);
-                return compileObjResult.execTime + compileDynamicLibResult.execTime;
+                if (useLLVM && finalTarget.contains("mingw")) {
+                    List<String> clang_cl = Arrays.asList(
+                            "clang-cl",
+                            "-target", finalTarget, "-c",
+                            "-mllvm", "-bcf",
+                            "-mllvm", "-bcf_prob=80",
+                            "-mllvm", "-bcf_loop=2",
+                            "-mllvm", "-sobf",
+                            include, source,
+                            "-o" + output_static
+                    );
+                    ProcessHelper.ProcessResult compileObjResult = ProcessHelper.run(outputDir.toAbsolutePath(), 3000 * 1000, clang_cl);
+                    compileObjResult.check("clang build");
+                    System.out.println("linking...");
+                    List<String> clang = new ArrayList<>(Collections.singleton("clang"));
+                    clang.addAll(Arrays.asList("-target", finalTarget, "-s", "-shared", output_static, "-o", output));
+                    ProcessHelper.ProcessResult compileDynamicLibResult = ProcessHelper.run(outputDir.toAbsolutePath(), 3000 * 1000, clang);
+                    compileDynamicLibResult.check("link");
+                    libNames.add(libName);
+                    return compileObjResult.execTime + compileDynamicLibResult.execTime;
+                } else {
+                    List<String> clang_cl = Arrays.asList(
+                            "clang",
+                            "-target", finalTarget,
+                            "-s", "-shared",
+                            include, source,
+                            "-o" + output
+                    );
+                    ProcessHelper.ProcessResult compileObjResult = ProcessHelper.run(outputDir.toAbsolutePath(), 3000 * 1000, clang_cl);
+                    compileObjResult.check("clang build");
+                    return compileObjResult.execTime;
+                }
             });
         }
     }
