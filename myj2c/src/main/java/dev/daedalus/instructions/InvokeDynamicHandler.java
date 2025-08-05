@@ -307,7 +307,8 @@ public class InvokeDynamicHandler extends GenericInstructionHandler<InvokeDynami
         switch (type.getSort()) {
             case Type.ARRAY:
             case Type.OBJECT:
-                return "c_" + context.getCachedClasses().getId(type.toString()) + "_(env)->clazz";
+                // muyang你吗是不是死了
+                return "c_" + context.getCachedClasses().getId(type.toString()) + "_(env)->clazz)";
             case Type.BOOLEAN:
                 lazz = "java/lang/Boolean";
                 fieldType = context.getCachedClasses().getClass(lazz);
